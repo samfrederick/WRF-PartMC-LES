@@ -1,0 +1,9 @@
+*.nc
+*.pdf
+*.gif
+
+# shape files
+cb_2018_us_state*
+tl_2022_us_state*
+
+*.pyc
