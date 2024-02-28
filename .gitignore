@@ -7,3 +7,6 @@ cb_2018_us_state*
 tl_2022_us_state*
 
 *.pyc
+cares_gas_emiss_rates.csv
+/aero_emit_dists/*
+
