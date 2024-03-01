@@ -1,0 +1,8 @@
+The input_sounding file (already in appropriate case directories) can be any set of 
+levels that goes at least up to the model top height (ztop) in the namelist. The 
+first line includes the surface pressure (hPa), potential temperature (K) and moisture
+mixing ratio (g/kg).  Each subsequent line has five input values: height (meters above 
+sea-level), dry potential temperature (K), vapor mixing ratio (g/kg), x-direction wind 
+component (m/s), and y-direction wind component (m/s).  The “ideal.exe” program 
+interpolates the data from the input_sounding file and will extrapolate if not enough 
+data is provided. 
