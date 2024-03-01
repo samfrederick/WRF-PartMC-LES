@@ -318,14 +318,6 @@ if __name__ == '__main__':
     shutil.move(os.path.join(cwd, filename_zero_emiss), 
                     os.path.join(aero_emit_dist_path,filename_zero_emiss))
 
-    # These are dummy, binary values to determine whether emissions are present 
-    # in an area or not (not emission rates)
-    #max_val = 1
-    #min_val = 0
-    #checkerboard_z_cells = 1 # number of grid cells in z direction (arbitrary if just concerned with ground pattern)
-    #checkerboard = checkerboard_profile(fx, fy, domain_x_cells+1, domain_y_cells+1, 
-    #                                    checkerboard_z_cells, max_val, min_val, phase_shift=False)[0][0]
-
     for i in np.arange(1, domain_x_cells+1):
         for j in np.arange(1, domain_y_cells+1):
 

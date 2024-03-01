@@ -187,14 +187,6 @@ if __name__ == '__main__':
                                          domain_z_cells=domain_z_cells, 
                                          ic_scaling=scaling_factor)
 
-    # These are dummy, binary values to determine whether emissions are present 
-    # in an area or not (not emission rates)
-    #max_val = 1
-    #min_val = 0
-    #checkerboard_z_cells = 1 # number of grid cells in z direction (arbitrary if just concerned with ground pattern)
-    #checkerboard = checkerboard_profile(fx, fy, domain_x_cells+1, domain_y_cells+1, 
-    #                                    checkerboard_z_cells, max_val, min_val, phase_shift=False)[0][0]
-
     # Simply copy the data from the first netcdf file into netcdf files for all gridcells
     for i in np.arange(1, domain_x_cells+1):
         for j in np.arange(1, domain_y_cells+1):
