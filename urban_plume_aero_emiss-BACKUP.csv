@@ -1,0 +1,4 @@
+﻿mode_name,mode_type,num_conc,geom_mean_diam,log10_geom_std_dev,mass_frac_OC,mass_frac_BC
+cooking,log_normal,9.00E+06,8.64E-08,0.28,1,
+diesel,log_normal,1.60E+08,5.00E-08,0.24,0.3,0.7
+gasoline,log_normal,5.00E+07,5.00E-08,0.24,0.8,0.2
