@@ -1,0 +1,164 @@
+{
+    "hno3": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.0,
+        "profile_phase_shift": false
+    },
+    "nh3": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.5,
+        "profile_phase_shift": false
+    },
+    "no": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.1,
+        "profile_phase_shift": false
+    },
+    "no2": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.0,
+        "profile_phase_shift": false
+    },
+    "o3": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 50.0,
+        "profile_phase_shift": false
+    },
+    "h2o2": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.1,
+        "profile_phase_shift": false
+    },
+    "co": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 21.0,
+        "profile_phase_shift": false
+    },
+    "so2": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.8,
+        "profile_phase_shift": false
+    },
+    "ch4": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 2200.0,
+        "profile_phase_shift": false
+    },
+    "c2h6": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.0,
+        "profile_phase_shift": false
+    },
+    "hcho": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.2,
+        "profile_phase_shift": false
+    },
+    "ch3oh": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.12,
+        "profile_phase_shift": false
+    },
+    "ANOL": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.0,
+        "profile_phase_shift": false
+    },
+    "ch3ooh": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.5,
+        "profile_phase_shift": false
+    },
+    "ald2": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.0,
+        "profile_phase_shift": false
+    },
+    "RCOOH": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.2,
+        "profile_phase_shift": false
+    },
+    "pan": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.8,
+        "profile_phase_shift": false
+    },
+    "par": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 2.0,
+        "profile_phase_shift": false
+    },
+    "AONE": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 1.0,
+        "profile_phase_shift": false
+    },
+    "eth": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.2,
+        "profile_phase_shift": false
+    },
+    "OLET": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.023,
+        "profile_phase_shift": false
+    },
+    "OLEI": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.00031,
+        "profile_phase_shift": false
+    },
+    "tol": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.1,
+        "profile_phase_shift": false
+    },
+    "xyl": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.1,
+        "profile_phase_shift": false
+    },
+    "onit": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.1,
+        "profile_phase_shift": false
+    },
+    "rooh": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.025,
+        "profile_phase_shift": false
+    },
+    "isop": {
+        "profile_scenario": "uniform-basecase",
+        "profile_min_val": 0.0,
+        "profile_max_val": 0.5,
+        "profile_phase_shift": false
+    }
+}

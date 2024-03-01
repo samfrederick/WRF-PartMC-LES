@@ -1,0 +1,29 @@
+MOSAIC Species,Symbol,Initial Mole Fraction (ppb),Emissions (nmol m^-2 s^-1),Emissions (mol m^-2 s^-1)
+Nitric oxide,NO,0.1,31.8,3.18E-08
+Nitrogen dioxide,NO2,1,1.67,1.67E-09
+Nitric acid,HNO3,1,,0
+Ozone,O3,50,,0
+Hydrogen peroxide,H2O2,1.1,,0
+Carbon monoxide,CO,21,291.3,2.913E-07
+Sulfur dioxide,SO2,0.8,2.51,2.51E-09
+Ammonia,NH3,0.5,6.11,6.11E-09
+Hydrogen chloride,HCl,0.7,,0
+Methane,CH4,2200,,0
+Ethane,C2H6,1,,0
+Formaldehyde,HCHO,1.2,1.68,1.68E-09
+Methanol,CH3OH,0.12,0.28,2.8E-10
+Methyl hydrogen peroxide,CH3OOH,0.5,,0
+Acetaldehyde,ALD2,1,0.68,6.8E-10
+Paraffin carbon,PAR,2,96,0.000000096
+Acetone,AONE,1,1.23,1.23E-09
+Ethene,ETH,0.2,7.2,7.2E-09
+Terminal olefin carbons,OLET,2.3E-2,2.42,2.42E-09
+Internal olefin carbons,OLEI,3.1E-4,2.42,2.42E-09
+Toluene,TOL,0.1,4.04,4.04E-09
+Xylene,XYL,0.1,2.41,2.41E-09
+Lumped organic nitrate,ONIT,0.1,,0
+Peroxyacetyl nitrate,PAN,0.8,,0
+Higher organic acid,RCOOH,0.2,,0
+Higher organic peroxide,ROOH,2.5E-2,,0
+Isoprene,ISOP,0.5,0.23,2.3E-10
+Alcohols,ANOL,,3.45,3.45E-09
