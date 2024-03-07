@@ -1,7 +1,7 @@
  &time_control
  run_days                            = 0,
  run_hours                           = 0,                                     
- run_minutes                         = 0,                                       
+ run_minutes                         = 0,                                       ! SF EDIT 3/1/24: TESTING
  run_seconds                         = 0,
  start_year                          = 2023, 0001, 0001,
  start_month                         = 03,   01,   01,                          ! SF EDIT 2/7/24: change from summer solstace to vernal equinox
@@ -12,10 +12,10 @@
  end_year                            = 2023, 0001, 0001,
  end_month                           = 03,   01,   01,                          ! SF EDIT 2/7/24: change from summer solstace to vernal equinox
  end_day                             = 20,   01,   01,
- end_hour                            = 15,   02,   00,                          
+ end_hour                            = 11,   02,   00,                          ! SF EDIT 3/6/24: change 15 to 11 (testing chemistry interval)
  end_minute                          = 00,   30,   00,                          
  end_second                          = 00,   00,   00,
- history_interval_m                  = 30,   10,   1,                           ! SF EDIT 2/21/24: set 30 for gridded output
+ history_interval_m                  = 5,   10,   1,                           ! SF EDIT 3/7/24: set 5 mins
  history_interval_s                  = 00,   00,   1,
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
@@ -25,10 +25,10 @@
  io_form_input                       = 2,
  io_form_boundary                    = 2,
  io_form_auxhist2                    = 2,
- auxhist2_interval                   = 30,                                      ! SF EDIT 2/16/24: set 30 for gridded output - write aerosol bulk state to netcdf (mins)
+ auxhist2_interval                   = 5,                                      ! SF EDIT 3/7/24: set 5 mins - write aerosol bulk state to netcdf (mins)
  auxhist2_outname                    = 'aerosols_d<domain>_<date>',
  io_form_auxhist3                    = 2,
- auxhist3_interval                   = 30,                                      ! SF EDIT 2/16/24: set 30 for gridded output-  write aerosol distribution state to netcdf (mins)
+ auxhist3_interval                   = 5,                                      ! SF EDIT 3/7/24: set 5 mins -  write aerosol distribution state to netcdf (mins)
  auxhist3_outname                    = 'aerosol_dist_d<domain>_<date>',
  !debug_level                         = 1000
  /
@@ -36,13 +36,12 @@
  &domains
  time_step                           = 1,
  time_step_fract_num                 = 0,
- time_step_fract_den           
-       = 1,
+ time_step_fract_den                 = 1,
  max_dom                             = 1,
  s_we                                = 1,     1,     1,
- e_we                                = 41,   100,    151,
+ e_we                                = 101,   100,    151,                    ! SF EDIT 3/1/24: Change from 41 to 101
  s_sn                                = 1,     1,     1,
- e_sn                                = 41,   100,    151,
+ e_sn                                = 101,   100,    151,                    ! SF EDIT 3/1/24: Change from 41 to 101
  s_vert                              = 1,     1,     1,
  e_vert                              = 101,   100,    41,
  dx                                  = 100,   50,    16.6667, 
@@ -159,13 +158,13 @@
  /
 
  &partmc
- num_particles = 1000.0,
+ num_particles = 100.0,                                                         ! SF EDIT 3/1/24: set 100
  do_scm = .false., 
  do_coagulation = .true.                                                       
  do_emission = .true.,                                                          ! turn this on for emissions
  do_mosaic = .true.,
  do_deposition = .true.,                                                       
- do_gridded_output = .true.,                                                   ! SF EDIT 2/21/24: Set TRUE - generate netcdf files per column for per-particle data.
+ do_gridded_output = .false.,                                                   ! SF EDIT 2/21/24: Set FALSE - generate netcdf files per column for per-particle data.
  do_transport = .true.,
  record_removals = .false.,
  do_optical = .false.,
@@ -176,7 +175,7 @@
  partmc_emissions = "./aero_emit_dists/aero_emit_dists",                        ! ./subdirectory/file-prefix
  !partmc_bcs = "./bcs/bcs",                                                     ! ./subdirectory/file-prefix
  partmc_ics = "./ics/ics",                                                      ! ./subdirectory/file-prefix
- partmc_chem_dt = 60.0,                                                         ! chemistry timestep in seconds
+ partmc_chem_dt = 1.0,                                                         ! SF EDIT 3/6/24: change 60 to 1, test calling chem at short intervals, chemistry timestep in seconds
  num_bins = 100,
  num_edges = 101,
  do_ideal_init_cond = .false.                                                   ! turn off for loading in netcdf ics and emissions (maybe bcs)
