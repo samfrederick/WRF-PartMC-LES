@@ -3,6 +3,7 @@
 *.nc
 *.pdf
 *.gif
+*.output
 rsl*
 slurm*
 wrfout_*
