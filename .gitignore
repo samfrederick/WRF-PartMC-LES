@@ -3,6 +3,7 @@
 *.nc
 *.pdf
 *.gif
+rsl*
 
 # shape files
 cb_2018_us_state*
