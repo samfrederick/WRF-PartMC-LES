@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=wrf-partmc-les
-#SBATCH --nodes=4
-#SBATCH -n 192
+#SBATCH --nodes=8
+#SBATCH -n 384
 #SBATCH --partition=sesempi
-#SBATCH --time=24:00:00
+#SBATCH --time=36:00:00
 #SBATCH --mem-per-cpu=5000
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=FAIL
@@ -34,8 +34,8 @@ export MKL_CBWR=COMPATIBLE
 # Initial condition and emission profile parameters
 #scenario='uniform-basecase'
 #scenario='fx2fy2'
-#scenario='point-source-10x10'
-scenario='point-source-1x1'
+scenario='point-source-10x10'
+#scenario='point-source-1x1'
 #overlap_precursors=1 # 1 is true, 0 is false
 
 # Get simulation configuration (chemical mechanism, domain dimensions)
@@ -104,7 +104,7 @@ python json_io.py $CHEM_OPT $scenario
 python edit_wrfinput_initcond.py $CHEM_OPT $extent_we $extent_sn $extent_vert $scenario
 
 echo
-time mpirun -np 192 ./wrf.exe
+time mpirun -np 384 ./wrf.exe
 echo
 
 python move_output_files.py
