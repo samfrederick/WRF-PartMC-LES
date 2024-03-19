@@ -6,9 +6,9 @@ output_path = '/data/nriemer/d/sf20/les_output/wrf-partmc'
 # 1851783 basecase with mosaic chem, tstart 2023-06-21_09:00:00
 # 1909559, basecase aerosol emissions delayed by 1 hour, tstart 2023-06-21_09:00:00
 # 1934602 basecase, corrected IC aitken mode geom mean diam, corrected IC gas concentrations, tstart 2023-03-20_09:00:00
-basecase_subdir = os.path.join(output_path, 'slurm-1934602')
-basecase_aerodata = nc.Dataset(os.path.join(basecase_subdir, 'aerosols_d01_2023-03-20_09:00:00'))
-basecase_aerodistdata = nc.Dataset(os.path.join(basecase_subdir, 'aerosol_dist_d01_2023-03-20_09:00:00'))
+basecase_subdir = os.path.join(output_path, 'slurm-1826399')
+basecase_aerodata = nc.Dataset(os.path.join(basecase_subdir, 'aerosols_d01_2023-06-21_09:00:00'))
+basecase_aerodistdata = nc.Dataset(os.path.join(basecase_subdir, 'aerosol_dist_d01_2023-06-21_09:00:00'))
 
 """
 # Basecase aerosol emissions delayed by 1 hour, change date to vernal equinox
