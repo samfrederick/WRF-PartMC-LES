@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=wrf-partmc-les
-#SBATCH --nodes=8
-#SBATCH -n 384
+#SBATCH --nodes=4
+#SBATCH -n 192
 #SBATCH --partition=sesempi
 #SBATCH --time=36:00:00
 #SBATCH --mem-per-cpu=5000
@@ -104,7 +104,7 @@ python json_io.py $CHEM_OPT $scenario
 python edit_wrfinput_initcond.py $CHEM_OPT $extent_we $extent_sn $extent_vert $scenario
 
 echo
-time mpirun -np 384 ./wrf.exe
+time mpirun -np 192 ./wrf.exe
 echo
 
 python move_output_files.py

@@ -175,7 +175,7 @@
  partmc_emissions = "./aero_emit_dists/aero_emit_dists",                        ! ./subdirectory/file-prefix
  !partmc_bcs = "./bcs/bcs",                                                     ! ./subdirectory/file-prefix
  partmc_ics = "./ics/ics",                                                      ! ./subdirectory/file-prefix
- partmc_chem_dt = 1.0,                                                         ! SF EDIT 3/6/24: change 60 to 1, test calling chem at short intervals, chemistry timestep in seconds
+ partmc_chem_dt = 60.0,                                                         ! SF EDIT 3/8/24: change 1 to 60, test compare against calling chem every second, chemistry timestep in seconds
  num_bins = 100,
  num_edges = 101,
  do_ideal_init_cond = .false.                                                   ! turn off for loading in netcdf ics and emissions (maybe bcs)
