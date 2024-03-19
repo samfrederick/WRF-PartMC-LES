@@ -10,6 +10,7 @@ wrfout_*
 wrfinput_*
 aerosols_d01*
 aerosol_dist_d01*
+test.ipynb
 
 # shape files
 cb_2018_us_state*
