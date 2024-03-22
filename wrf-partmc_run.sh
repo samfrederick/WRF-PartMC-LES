@@ -10,8 +10,29 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=sf20@illinois.edu
 
-now=$(date +"%T")
-echo "Start time : $now"
+#path to WRF simulation
+SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
+cd $SIM_PATH
+
+OUTPUT_PATH=$SIM_PATH/$SLURM_JOB_ID
+mkdir $OUTPUT_PATH
+mkdir $OUTPUT_PATH/aero_emit_dists
+mkdir $OUTPUT_PATH/ics
+mkdir $OUTPUT_PATH/out2
+
+cp $SIM_PATH/aero_data.dat $OUTPUT_PATH/aero_data.dat
+cp $SIM_PATH/gas_data.dat $OUTPUT_PATH/gas_data.dat
+cp $SIM_PATH/gas_params.csv $OUTPUT_PATH/gas_params.csv
+cp $SIM_PATH/ideal.exe $OUTPUT_PATH/ideal.exe
+cp $SIM_PATH/input_sounding $OUTPUT_PATH/input_sounding
+cp $SIM_PATH/LANDUSE.TBL $OUTPUT_PATH/LANDUSE.TBL
+cp $SIM_PATH/namelist.input $OUTPUT_PATH/namelist.input
+cp $SIM_PATH/wrf.exe $OUTPUT_PATH/wrf.exe
+
+cd $OUTPUT_PATH
+
+timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+echo "Start : $timestamp"
 echo ${run}
 source ~/.bashrc
 #free the system to have unlimited memory requests
@@ -23,11 +44,7 @@ module purge
 module load gnu/hdf5-1.10.6-gnu-9.3.0
 module load gnu/netcdf4-4.7.4-gnu-9.3.0
 module load gnu/openmpi-3.1.6-gnu-9.3.0
-#path to WRF simulation
-cd /data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
 
-# Make sure there is a copy of makekeelingloads.csh in your em_les directory
-#source makekeelingloads.csh
 export MKL_DEBUG_CPU_TYPE=5
 export MKL_CBWR=COMPATIBLE
 
@@ -93,20 +110,28 @@ echo "Number of grid cells in south-north: $extent_sn"
 echo "Number of grid cells in vertical: $extent_vert"
 
 # set emissions (gases and aerosols)
-python create_aero_emit_dists.py $scenario $extent_we $extent_sn $extent_vert
-python create_aero_ics.py $scenario $extent_we $extent_sn $extent_vert
+python $SIM_PATH/create_aero_emit_dists.py $OUTPUT_PATH $scenario $extent_we $extent_sn $extent_vert
+# set intial conditions (uniform distribution)
+python $SIM_PATH/create_aero_ics.py $OUTPUT_PATH 'uniform-basecase' $extent_we $extent_sn $extent_vert
 
 echo
 time mpirun -np 8 ./ideal.exe 
 
 # modify gas initial conditions profiles
-python json_io.py $CHEM_OPT $scenario
-python edit_wrfinput_initcond.py $CHEM_OPT $extent_we $extent_sn $extent_vert $scenario
+python $SIM_PATH/json_io.py $OUTPUT_PATH $CHEM_OPT $scenario
+python $SIM_PATH/edit_wrfinput_initcond.py $OUTPUT_PATH $CHEM_OPT $extent_we $extent_sn $extent_vert $scenario
+
+echo 
+time mpirun -np $SLURM_NPROCS ./wrf.exe
+
+ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
+mkdir $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
+cp -a $OUTPUT_PATH/. $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
 
 echo
-time mpirun -np 192 ./wrf.exe
-echo
+timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+echo "End : $timestamp"
 
-python move_output_files.py
-
-now=$(date +"%T") echo "End time : $now"
+cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $ARCHIVE_PATH/slurm-$SLURM_JOB_ID/slurm-$SLURM_JOB_ID.out
+rm -rf $OUTPUT_PATH
+rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
