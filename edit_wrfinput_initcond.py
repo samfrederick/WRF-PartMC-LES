@@ -1,25 +1,26 @@
 """
 """
 import os#, sys
+from pathlib import Path
 import numpy as np
 from netCDF4 import Dataset
 #from emiss_profiles import gauss3d_profile, checkerboard_profile
 import json
 import sys
 
-def create_modified_netcdf(ic_array=None, ic_scaling=1.0):
+def create_modified_netcdf(job_path, ic_array=None, ic_scaling=1.0):
     # Code via 
     # https://stackoverflow.com/questions/15141563/python-netcdf-making-a-copy-of-all-variables-and-attributes-but-one
     # User Rich Signell
 
     # Modified by Sam Frederick, October 2022
 
-    jsonfile = open('species_initcond_profile_data.json')
+    jsonfile = open(f'{job_path}/species_initcond_profile_data.json')
     species_initcond = json.load(jsonfile)
     variables_to_modify = [species for species in species_initcond.keys()]
 
-    src = Dataset("wrfinput_d01")
-    dst = Dataset("wrfinput_d01_new", "w")
+    src = Dataset(f"{job_path}/wrfinput_d01")
+    dst = Dataset(f"{job_path}/wrfinput_d01_new", "w")
 
     # Mesh grid dimensions
     xgrid = src.dimensions['west_east'].size
@@ -66,22 +67,23 @@ def create_modified_netcdf(ic_array=None, ic_scaling=1.0):
     dst.close()
 
     # save updates to JSON emission file
-    with open('species_initcond_profile_data.json', 'w') as outfile:
+    with open(f'{job_path}/species_initcond_profile_data.json', 'w') as outfile:
         json.dump(species_initcond, outfile, indent=4)
 
     return
 
-def update_netcdf_names():
-    os.rename("wrfinput_d01", "wrfinput_d01_unmodifed")
-    os.rename("wrfinput_d01_new", "wrfinput_d01")
+def update_netcdf_names(job_path):
+    os.rename(f'{job_path}/wrfinput_d01', f'{job_path}/wrfinput_d01_unmodifed')
+    os.rename(f'{job_path}/wrfinput_d01_new', f'{job_path}/wrfinput_d01')
     return
 
 if __name__ == '__main__':
     # Access the command-line argument passed from the Bash script
-    CHEM_OPT = int(sys.argv[1])
-    domain_x_cells = int(sys.argv[2]) # number of grid cells in x direction
-    domain_y_cells = int(sys.argv[3]) # number of grid cells in y direction
-    domain_z_cells = int(sys.argv[4]) # number of grid cells in y direction
+    job_path = sys.argv[1]
+    CHEM_OPT = int(sys.argv[2])
+    domain_x_cells = int(sys.argv[3]) # number of grid cells in x direction
+    domain_y_cells = int(sys.argv[4]) # number of grid cells in y direction
+    domain_z_cells = int(sys.argv[5]) # number of grid cells in y direction
 
     #scenario = sys.argv[5] # gas initial conditions scenario
     # EDIT 2/16/24 - set initial condition to be uniform
@@ -89,19 +91,19 @@ if __name__ == '__main__':
     print('\n')
     print(f'Setting gas-phase initial conditions with scenario: {scenario}')
 
-    cwd = os.getcwd()
+    simdir = Path(__file__).parent
     shdir = 'spatial-het/sh-patterns'
     griddir = f'xres{domain_x_cells}yres{domain_y_cells}'
     filename = f'{scenario}.csv'
-    array_path = os.path.join(cwd, shdir, griddir, filename)
+    array_path = os.path.join(simdir, shdir, griddir, filename)
     scenario_arr = np.genfromtxt(array_path, delimiter=',')
 
     basecase_filename = 'uniform-basecase.csv'
-    basecase_array_path = os.path.join(cwd, shdir, griddir, basecase_filename)
+    basecase_array_path = os.path.join(simdir, shdir, griddir, basecase_filename)
     basecase_arr = np.genfromtxt(basecase_array_path, delimiter=',')
 
     scaling_factor = basecase_arr.sum() / scenario_arr.sum()
 
-    create_modified_netcdf(ic_array=scenario_arr, ic_scaling=scaling_factor)
-    update_netcdf_names()
+    create_modified_netcdf(job_path, ic_array=scenario_arr, ic_scaling=scaling_factor)
+    update_netcdf_names(job_path)
     

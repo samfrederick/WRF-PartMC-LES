@@ -4,6 +4,7 @@ Generate emissions netcdf files for surface level grid cells
 Author: Sam Frederick, August 2023
 """
 import sys, os
+from pathlib import Path
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
@@ -120,7 +121,7 @@ def set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling):
 # 
 # ------------------------------------------------------------------------------
 
-def create_emit_ncfile(set_zero_conc=False, emission_scaling=1.0):
+def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
 
     if set_zero_conc:
         file_prefix = 'nonzero'
@@ -131,7 +132,7 @@ def create_emit_ncfile(set_zero_conc=False, emission_scaling=1.0):
 
     print(f'Scaling aerosol emissions by {emission_scaling}')
 
-    ncfile = nc.Dataset(filename, 'w')
+    ncfile = nc.Dataset(f'{job_path}/{filename}', 'w')
 
     URBAN_PLUME_EMISS = True
 
@@ -283,39 +284,40 @@ def create_emit_ncfile(set_zero_conc=False, emission_scaling=1.0):
 
 if __name__ == '__main__':
 
-    scenario = sys.argv[1] # emissions scenario
+    job_path = sys.argv[1]
+    scenario = sys.argv[2] # emissions scenario
 
-    domain_x_cells = int(sys.argv[2]) # number of grid cells in x direction
-    domain_y_cells = int(sys.argv[3]) # number of grid cells in y direction
-    domain_z_cells = int(sys.argv[4]) # number of grid cells in y direction
+    domain_x_cells = int(sys.argv[3]) # number of grid cells in x direction
+    domain_y_cells = int(sys.argv[4]) # number of grid cells in y direction
+    domain_z_cells = int(sys.argv[5]) # number of grid cells in y direction
 
-    #TODO use os.get_cwd()
-    cwd = '/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les'
-    aero_emit_dist_path = '/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/aero_emit_dists'
+    simdir = Path(__file__).parent
+    aero_emit_dist_path = f'{job_path}/aero_emit_dists'
 
     print(f'Setting aerosol and gas emissions with scenario: {scenario}')
 
-    cwd = os.getcwd()
     shdir = 'spatial-het/sh-patterns'
     griddir = f'xres{domain_x_cells}yres{domain_y_cells}'
     filename = f'{scenario}.csv'
-    array_path = os.path.join(cwd, shdir, griddir, filename)
+    array_path = os.path.join(simdir, shdir, griddir, filename)
     scenario_arr = np.genfromtxt(array_path, delimiter=',')
 
     basecase_filename = 'uniform-basecase.csv'
-    basecase_array_path = os.path.join(cwd, shdir, griddir, basecase_filename)
+    basecase_array_path = os.path.join(simdir, shdir, griddir, basecase_filename)
     basecase_arr = np.genfromtxt(basecase_array_path, delimiter=',')
 
     scaling_factor = basecase_arr.sum() / scenario_arr.sum()
 
-    filename_nonzero_emiss = create_emit_ncfile(set_zero_conc=False, 
+    filename_nonzero_emiss = create_emit_ncfile(job_path,
+                                                set_zero_conc=False, 
                                                 emission_scaling=scaling_factor)
-    filename_zero_emiss = create_emit_ncfile(set_zero_conc=True, 
+    filename_zero_emiss = create_emit_ncfile(job_path,
+                                             set_zero_conc=True, 
                                              emission_scaling=scaling_factor)
 
-    shutil.move(os.path.join(cwd, filename_nonzero_emiss), 
+    shutil.move(os.path.join(job_path, filename_nonzero_emiss), 
                     os.path.join(aero_emit_dist_path,filename_nonzero_emiss))
-    shutil.move(os.path.join(cwd, filename_zero_emiss), 
+    shutil.move(os.path.join(job_path, filename_zero_emiss), 
                     os.path.join(aero_emit_dist_path,filename_zero_emiss))
 
     for i in np.arange(1, domain_x_cells+1):

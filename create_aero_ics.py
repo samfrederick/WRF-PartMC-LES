@@ -5,6 +5,7 @@ Presently this simply copies one of the data files in the center of the CARES
 domain and uses this across the entire domain.
 """
 import shutil
+from pathlib import Path
 import numpy as np
 import os, sys
 import netCDF4 as nc
@@ -40,15 +41,14 @@ urban_plume_aero_ics = {'aitken_mode': {'number_conc [m^-3]': 3.2e9, # 3200 per 
                                          },
                         }
 
-def createICReference(set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
+def createICReference(job_path, set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
 
     if set_zero_conc:
         file_prefix = 'nonzero'
     else:
         file_prefix = 'zero'
     
-    #TODO use os.get_cwd()
-    file_path = f'/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/ics/ic_{file_prefix}_reference.nc'
+    file_path = f'{job_path}/ics/ic_{file_prefix}_reference.nc'
     ncfile = nc.Dataset(file_path, 'w')
 
     if domain_z_cells is None:
@@ -156,34 +156,39 @@ def createICReference(set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
     return file_path
 
 if __name__ == '__main__':
+    
 
     # SF edit 11/9/23 - change aerosol ICs to uniform over the entire domain
-    #scenario = sys.argv[1] # initial condition scenario
-    scenario = 'uniform-basecase'
+    job_path = sys.argv[1]
+    scenario = sys.argv[2] # initial condition scenario
+    #scenario = 'uniform-basecase'
 
-    domain_x_cells = int(sys.argv[2]) # number of grid cells in x direction
-    domain_y_cells = int(sys.argv[3]) # number of grid cells in y direction
-    domain_z_cells = int(sys.argv[4]) # number of grid cells in y direction
+    domain_x_cells = int(sys.argv[3]) # number of grid cells in x direction
+    domain_y_cells = int(sys.argv[4]) # number of grid cells in y direction
+    domain_z_cells = int(sys.argv[5]) # number of grid cells in y direction
 
     print(f'Setting aerosol ICs with scenario: {scenario}')
 
-    cwd = os.getcwd()
+    simdir = Path(__file__).parent
+
     shdir = 'spatial-het/sh-patterns'
     griddir = f'xres{domain_x_cells}yres{domain_y_cells}'
     filename = f'{scenario}.csv'
-    array_path = os.path.join(cwd, shdir, griddir, filename)
+    array_path = os.path.join(simdir, shdir, griddir, filename)
     scenario_arr = np.genfromtxt(array_path, delimiter=',')
 
     basecase_filename = 'uniform-basecase.csv'
-    basecase_array_path = os.path.join(cwd, shdir, griddir, basecase_filename)
+    basecase_array_path = os.path.join(simdir, shdir, griddir, basecase_filename)
     basecase_arr = np.genfromtxt(basecase_array_path, delimiter=',')
 
     scaling_factor = basecase_arr.sum() / scenario_arr.sum()
 
-    filepath_nonzero_ic = createICReference(set_zero_conc=False,
+    filepath_nonzero_ic = createICReference(job_path,
+                                            set_zero_conc=False,
                                             domain_z_cells=domain_z_cells, 
                                             ic_scaling=scaling_factor)
-    filepath_zero_ic = createICReference(set_zero_conc=True, 
+    filepath_zero_ic = createICReference(job_path,
+                                         set_zero_conc=True, 
                                          domain_z_cells=domain_z_cells, 
                                          ic_scaling=scaling_factor)
 
@@ -198,8 +203,7 @@ if __name__ == '__main__':
             str_j = str(j).zfill(3)
 
             destination_filename = f'ics_{str_i}_{str_j}.nc'
-            #TODO use os.get_cwd()
-            destination_file_path = os.path.join('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/ics', destination_filename)
+            destination_file_path = os.path.join(f'{job_path}/ics', destination_filename)
 
             if grid_value == 1.0:
                 #print('non-zero emissions:', i, j)
