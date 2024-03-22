@@ -18,7 +18,7 @@ aero_species = ['SO4','NO3','Cl','NH4','MSA','ARO1','ARO2','ALK1','OLE1','API1',
 
 def load_urban_plume_aero_props():
     #TODO use os.get_cwd()
-    aero_emiss = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/urban_plume_aero_emiss.csv')
+    aero_emiss = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions/urban_plume_aero_emiss.csv')
     return aero_emiss
 
 # ------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ def set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling):
 
         # Use emission rates from PartMC Urban-Plume scenario (rates from Riemer et al 2009)
         #TODO use os.get_cwd()
-        emiss_data = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/urbanplume_gas_emiss_rates.csv')
+        emiss_data = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions/urbanplume_gas_emiss_rates.csv')
         for itime in range(n_times):
             for ispec in range(n_gas_specs):
                 spec_emiss_rate = emiss_data.loc[ispec, 'Emission rate (mol m^{-2} s^{-1})']
