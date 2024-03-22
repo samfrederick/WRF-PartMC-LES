@@ -12,10 +12,10 @@
  end_year                            = 2023, 0001, 0001,
  end_month                           = 03,   01,   01,                          ! SF EDIT 2/7/24: change from summer solstace to vernal equinox
  end_day                             = 20,   01,   01,
- end_hour                            = 11,   02,   00,                          ! SF EDIT 3/6/24: change 15 to 11 (testing chemistry interval)
+ end_hour                            = 15,   02,   00,                          ! SF EDIT 3/21/24: change 11 to 15
  end_minute                          = 00,   30,   00,                          
  end_second                          = 00,   00,   00,
- history_interval_m                  = 5,   10,   1,                           ! SF EDIT 3/7/24: set 5 mins
+ history_interval_m                  = 10,   10,   1,                           ! SF EDIT 3/21/24: set 10 mins
  history_interval_s                  = 00,   00,   1,
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
@@ -25,10 +25,10 @@
  io_form_input                       = 2,
  io_form_boundary                    = 2,
  io_form_auxhist2                    = 2,
- auxhist2_interval                   = 5,                                      ! SF EDIT 3/7/24: set 5 mins - write aerosol bulk state to netcdf (mins)
+ auxhist2_interval                   = 10,                                      ! SF EDIT 3/21/24: set 10 mins - write aerosol bulk state to netcdf (mins)
  auxhist2_outname                    = 'aerosols_d<domain>_<date>',
  io_form_auxhist3                    = 2,
- auxhist3_interval                   = 5,                                      ! SF EDIT 3/7/24: set 5 mins -  write aerosol distribution state to netcdf (mins)
+ auxhist3_interval                   = 10,                                      ! SF EDIT 3/21/24: set 10 mins -  write aerosol distribution state to netcdf (mins)
  auxhist3_outname                    = 'aerosol_dist_d<domain>_<date>',
  !debug_level                         = 1000
  /
@@ -161,8 +161,8 @@
  num_particles = 100.0,                                                         ! SF EDIT 3/1/24: set 100
  do_scm = .false., 
  do_coagulation = .true.                                                       
- do_emission = .true.,                                                          ! turn this on for emissions
- do_mosaic = .true.,
+ do_emission = .false.,                                                         ! SF EDIT 3/21/24: set FALSE for ideal coag sims - turn this on for emissions
+ do_mosaic = .false.,                                                           ! SF EDIT 3/21/24: set FALSE for ideal coag sims
  do_deposition = .true.,                                                       
  do_gridded_output = .false.,                                                   ! SF EDIT 2/21/24: Set FALSE - generate netcdf files per column for per-particle data.
  do_transport = .true.,
