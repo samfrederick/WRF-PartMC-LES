@@ -14,15 +14,16 @@
 SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
 cd $SIM_PATH
 
-OUTPUT_PATH=$SIM_PATH/$SLURM_JOB_ID
+ARCHIVE_PATH=/data/nriemer/a/sf20/wrf-partmc-ideal-coagulation
+OUTPUT_PATH=$ARCHIVE_PATH/slurm-$SLURM_JOB_ID
 mkdir $OUTPUT_PATH
 mkdir $OUTPUT_PATH/aero_emit_dists
 mkdir $OUTPUT_PATH/ics
 mkdir $OUTPUT_PATH/out2
 
-cp $SIM_PATH/aero_data.dat $OUTPUT_PATH/aero_data.dat
-cp $SIM_PATH/gas_data.dat $OUTPUT_PATH/gas_data.dat
-cp $SIM_PATH/gas_params.csv $OUTPUT_PATH/gas_params.csv
+cp $SIM_PATH/partmc-files/aero_data.dat $OUTPUT_PATH/aero_data.dat
+cp $SIM_PATH/partmc-files/gas_data.dat $OUTPUT_PATH/gas_data.dat
+cp $SIM_PATH/partmc-files/gas_params.csv $OUTPUT_PATH/gas_params.csv
 cp $SIM_PATH/ideal.exe $OUTPUT_PATH/ideal.exe
 cp $SIM_PATH/input_sounding $OUTPUT_PATH/input_sounding
 cp $SIM_PATH/LANDUSE.TBL $OUTPUT_PATH/LANDUSE.TBL
@@ -50,9 +51,10 @@ export MKL_CBWR=COMPATIBLE
 
 # Initial condition and emission profile parameters
 #scenario='uniform-basecase'
-scenario='fx2fy2'
+#scenario='fx2fy2'
+#scenario='fx1fy0'
 #scenario='point-source-10x10'
-#scenario='point-source-1x1'
+scenario='point-source-1x1'
 #overlap_precursors=1 # 1 is true, 0 is false
 
 # Get simulation configuration (chemical mechanism, domain dimensions)
@@ -124,14 +126,10 @@ time mpirun -np 8 ./ideal.exe
 echo 
 time mpirun -np $SLURM_NPROCS ./wrf.exe
 
-ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
-mkdir $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
-cp -a $OUTPUT_PATH/. $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
-
 echo
 timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 echo "End : $timestamp"
 
-cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $ARCHIVE_PATH/slurm-$SLURM_JOB_ID/slurm-$SLURM_JOB_ID.out
-rm -rf $OUTPUT_PATH
+cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
+#rm -rf $OUTPUT_PATH
 rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
