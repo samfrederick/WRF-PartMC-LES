@@ -14,15 +14,16 @@
 SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
 cd $SIM_PATH
 
-OUTPUT_PATH=$SIM_PATH/$SLURM_JOB_ID
+ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
+OUTPUT_PATH=$ARCHIVE_PATH/slurm-$SLURM_JOB_ID
 mkdir $OUTPUT_PATH
 mkdir $OUTPUT_PATH/aero_emit_dists
 mkdir $OUTPUT_PATH/ics
 mkdir $OUTPUT_PATH/out2
 
-cp $SIM_PATH/aero_data.dat $OUTPUT_PATH/aero_data.dat
-cp $SIM_PATH/gas_data.dat $OUTPUT_PATH/gas_data.dat
-cp $SIM_PATH/gas_params.csv $OUTPUT_PATH/gas_params.csv
+cp $SIM_PATH/partmc-files/aero_data.dat $OUTPUT_PATH/aero_data.dat
+cp $SIM_PATH/partmc-files/gas_data.dat $OUTPUT_PATH/gas_data.dat
+cp $SIM_PATH/partmc-files/gas_params.csv $OUTPUT_PATH/gas_params.csv
 cp $SIM_PATH/ideal.exe $OUTPUT_PATH/ideal.exe
 cp $SIM_PATH/input_sounding $OUTPUT_PATH/input_sounding
 cp $SIM_PATH/LANDUSE.TBL $OUTPUT_PATH/LANDUSE.TBL
@@ -124,14 +125,10 @@ python $SIM_PATH/edit_wrfinput_initcond.py $OUTPUT_PATH $CHEM_OPT $extent_we $ex
 echo 
 time mpirun -np $SLURM_NPROCS ./wrf.exe
 
-ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
-mkdir $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
-cp -a $OUTPUT_PATH/. $ARCHIVE_PATH/slurm-$SLURM_JOB_ID
-
 echo
 timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 echo "End : $timestamp"
 
-cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $ARCHIVE_PATH/slurm-$SLURM_JOB_ID/slurm-$SLURM_JOB_ID.out
-rm -rf $OUTPUT_PATH
+cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
+#rm -rf $OUTPUT_PATH
 rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
