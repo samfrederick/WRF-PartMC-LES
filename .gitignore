@@ -21,4 +21,6 @@ cares_gas_emiss_rates.csv
 /aero_emit_dists/*
 /0_misc/*
 
+*.code-workspace
+
 README.namelist
