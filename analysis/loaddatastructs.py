@@ -15,7 +15,7 @@ class DataStruct:
     domain_y_cells = None
     historydelta_m = None
 
-    def add_scenario(self, scenario_name, slurm_id, **kwargs):
+    def addScenario(self, scenario_name, slurm_id, **kwargs):
         start = kwargs.get('start_time', '2023-03-20_09:00:00')
         self.aero_data[scenario_name] =  nc.Dataset(f'{self.archive_path}/slurm-{slurm_id}/aerosols_d01_{start}')
         self.aerodist_data[scenario_name] =  nc.Dataset(f'{self.archive_path}/slurm-{slurm_id}/aerosol_dist_d01_{start}')
@@ -23,9 +23,9 @@ class DataStruct:
         self.nsh_dict[scenario_name] = {}
 
         if (scenario_name == 'uniform-basecase' and not self.n_times):
-            self.add_sim_attributes()
+            self.addSimAttributes()
     
-    def add_sim_attributes(self):
+    def addSimAttributes(self):
         try:
             basecase_aerodata = self.aero_data['uniform-basecase']
             self.n_times = basecase_aerodata.dimensions['Time'].size
@@ -40,6 +40,26 @@ class DataStruct:
 
         except KeyError:
             print('uniform-basecase not found in aero_data')
+    
+    def getScenarioList(self):
+        return list(self.aero_data.keys())
+    
+    def getScenarioSH(self, gridsize, return_scaling=False):
+        path = '/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/spatial-het'
+        filename = f'sh_patterns_xres{gridsize}_yres{gridsize}_exact.csv'
+        dataset = pd.read_csv(os.path.join(path, filename), index_col='scenario')
+        scenario_list = self.getScenarioList()
+        if not return_scaling:
+            scenario_sh = {}
+            for scenario in scenario_list:
+                scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
+            return scenario_sh
+        scenario_sh = {}
+        scaling_sh = {}
+        for scenario in scenario_list:
+            scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
+            scaling_sh[scenario] = dataset.loc[scenario, 'scaling-factor']
+        return scenario_sh, scaling_sh
 
 global Archive
 Archive = DataStruct()
