@@ -1,7 +1,7 @@
  &time_control
  run_days                            = 0,
  run_hours                           = 0,                                     
- run_minutes                         = 0,                                       ! SF EDIT 3/1/24: TESTING
+ run_minutes                         = 0,                                       
  run_seconds                         = 0,
  start_year                          = 2023, 0001, 0001,
  start_month                         = 03,   01,   01,                          ! SF EDIT 2/7/24: change from summer solstace to vernal equinox
@@ -161,8 +161,8 @@
  num_particles = 100.0,                                                         ! SF EDIT 3/1/24: set 100
  do_scm = .false., 
  do_coagulation = .true.                                                       
- do_emission = .false.,                                                         ! SF EDIT 3/21/24: set FALSE for ideal coag sims - turn this on for emissions
- do_mosaic = .false.,                                                           ! SF EDIT 3/21/24: set FALSE for ideal coag sims
+ do_emission = .true.,                                                         ! SF EDIT 3/28/24: set TRUE - turn this on for emissions
+ do_mosaic = .true.,                                                           ! SF EDIT 3/28/24: set TRUE
  do_deposition = .true.,                                                       
  do_gridded_output = .false.,                                                   ! SF EDIT 2/21/24: Set FALSE - generate netcdf files per column for per-particle data.
  do_transport = .true.,
@@ -175,7 +175,7 @@
  partmc_emissions = "./aero_emit_dists/aero_emit_dists",                        ! ./subdirectory/file-prefix
  !partmc_bcs = "./bcs/bcs",                                                     ! ./subdirectory/file-prefix
  partmc_ics = "./ics/ics",                                                      ! ./subdirectory/file-prefix
- partmc_chem_dt = 60.0,                                                         ! SF EDIT 3/8/24: change 1 to 60, test compare against calling chem every second, chemistry timestep in seconds
+ partmc_chem_dt = 1.0,                                                          ! SF EDIT 3/28/24: change 60 to 1, chemistry timestep in seconds
  num_bins = 100,
  num_edges = 101,
  do_ideal_init_cond = .false.                                                   ! turn off for loading in netcdf ics and emissions (maybe bcs)
