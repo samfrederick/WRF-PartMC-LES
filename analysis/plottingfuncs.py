@@ -6,8 +6,47 @@ import mpl_toolkits.axes_grid1.inset_locator as il
 import matplotlib.patches as patches
 import matplotlib.animation as animation
 from matplotlib.ticker import FormatStrFormatter
+from math import ceil
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+
+def _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=False):
+    history_delta = Archive.historydelta_m
+    total_duration = (Archive.n_times-1)*history_delta
+
+    if xtick_units != 'm' and xtick_units != 'h':
+        raise ValueError(f'Invalid label for xtick_units: {xtick_units}')
+    elif xtick_units == 'h':
+        total_duration = total_duration/60
+        history_delta = history_delta/60
+
+    n_xticks = int(1 + total_duration / xtick_delta)
+    xtick_nudge = 0.5
+    if not shift_tickloc:
+        xtick_nudge = 0
+    xticks = xtick_nudge + np.linspace(0, Archive.n_times-1, n_xticks) # shift by 1/2 to be cell-centered
+    xtick_labels = history_delta*np.linspace(0, Archive.n_times-1, n_xticks)
+    xtick_labels = xtick_labels.astype(int)
+
+    return xticks, xtick_labels
+
+def _plotSignificance(rel_diff, ax, thres_n_std_dev=5, skipzero=False):
+
+    # get relative difference values during the first hour when the scenario matches up with the basecase
+    # to get a baseline for how much variance should be expected due to statistical noise
+    n_times_before_1hr = ceil(60/Archive.historydelta_m)
+    if n_times_before_1hr < Archive.n_times:
+        baseline = rel_diff[:n_times_before_1hr, :].flatten()
+        if skipzero:
+            baseline = rel_diff[1:n_times_before_1hr, :].flatten()
+
+    # use a threshold of n*sigma (default to 5 sigma)
+    thres = thres_n_std_dev*baseline.std()
+
+    zm = np.ma.masked_less(abs(rel_diff), thres)
+
+    ax.pcolor(zm.T, hatch='.', alpha=0.)
+
 
 """
 def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False):
@@ -55,13 +94,22 @@ def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, mixingratio=
     title = kwargs.get('title', f'{scenario}, {variable}')
     cbar_title = kwargs.get('cbar_title', f'{variable}, {var_units}')
     cbar = fig.colorbar(cs, label=cbar_title)
-    ax.set_xlabel('Time (mins)', fontsize=12)
-    ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
+
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
+    # Set y-axis ticks and label
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+    ax.set_ylabel('z [km]', fontsize=12)
+
     ax.set_title(title)
+
 
 def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, mixingratio=True, **kwargs):
     
@@ -82,15 +130,21 @@ def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, m
     title = kwargs.get('title', f'{scenario}, {variable}')
     cbar_title = kwargs.get('cbar_title', f'{variable}, {var_units}')
     cbar = fig.colorbar(cs, label=cbar_title)
-    ax.set_xlabel('Time (mins)', fontsize=12)
+
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
     ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(title)
 
-def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio):
+def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwargs):
     #var_array = calculateVarZT(scenario, variable, mixingratio)
     fig, axs  = plt.subplots(len(variables),1, figsize=(12,12))
 
@@ -116,10 +170,15 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio):
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
         ax.legend()
-        ax.set_xlabel('Time (mins)', fontsize=12)
+        # Set x-axis ticks and label
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(xtick_labels)
+        ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
         ax.set_ylabel(f'{var_units}', fontsize=12)
-        ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-        ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
         #ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
         #ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
         ax.set_title(f'{variable}')
@@ -159,7 +218,7 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
     plt.suptitle(f'Time: {delta_t*time} m')
     plt.tight_layout()
 
-def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None):
+def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None, **kwargs):
     
     if variable not in Archive.nsh_dict[scenario]:
         print(f'{variable} not in NSH dictionary for {scenario}, calculating')
@@ -178,46 +237,69 @@ def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None):
     cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
     cbar = fig.colorbar(cs, label='NSH percent difference')
 
-    ax.set_xlabel('Time (mins)', fontsize=12)
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
     ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(f'{scenario} NSH ({variable}) percent difference')
 
-def plotVarPercentDiff(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False):
+def plotVarPercentDiff(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False, **kwargs):
     
     rel_diff = calculateVarPercentDiff(scenario, variable, mixingratio, skip_t0)
     fig, ax  = plt.subplots(1,1, figsize=(12,5))
     cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
-    cbar = fig.colorbar(cs, label=f'{variable} percent difference')
+    cbar = fig.colorbar(cs)
+    cbar.set_label(r'% difference', loc='center')
 
-    ax.set_xlabel('Time (mins)', fontsize=12)
+    # plot significance hatching
+    if kwargs.get('plot_significance'):
+        _plotSignificance(rel_diff, ax, thres_n_std_dev=kwargs.get('signif_thres_n_std_dev', 5), skipzero=skip_t0)
+
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
     ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+
+
     if mixingratio:
         mixingratio_str = 'mixing ratio '
     else:
         mixingratio_str = ''
     ax.set_title(f'{scenario} {variable} {mixingratio_str}percent difference ')
 
-def plotVarBias(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False):
+def plotVarBias(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False, **kwargs):
     
     bias = calculateVarBias(scenario, variable, mixingratio, skip_t0)
     fig, ax  = plt.subplots(1,1, figsize=(12,5))
     cs = ax.pcolormesh(bias.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
     cbar = fig.colorbar(cs, label=f'{variable} bias')
 
-    ax.set_xlabel('Time (mins)', fontsize=12)
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
     ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+
     if mixingratio:
         mixingratio_str = 'mixing ratio '
     else:
@@ -230,15 +312,21 @@ def plotNumberDist(scenario, i, j, k, **kwargs):
     fig, ax = plt.subplots(1,2, figsize=(8,4))
 
     # Configurable keyword arguments
-    times = kwargs.get('times', np.array([0, 24, 48, 72]))
+    times = kwargs.get('times', np.arange(0, Archive.n_times+1, int(Archive.n_times/(60/Archive.historydelta_m))))
     xlims = kwargs.get('xlims', (5e-9, 5e-6))
     ylims = kwargs.get('ylims', (0, 10000))
-    numconctimeidx=kwargs.get('numconctimeidx', 72)
+    numconctimeidx=kwargs.get('numconctimeidx', Archive.n_times-1)
     local_binning = kwargs.get('local_binning', None)
     if not isinstance(times, np.ndarray):
         times = np.array(times)
 
-    colors = plt.cm.viridis(np.linspace(.2, .9, times.size))
+    cmap_name = kwargs.get('cmap')
+    if not cmap_name:
+        cmap = plt.cm.viridis
+    else:
+        cmap =plt.get_cmap(cmap_name)
+
+    colors = cmap(np.linspace(.2, .9, times.size))
     for c, time in zip(colors, times):
         x_vals = []
         bin_vals = []
@@ -282,7 +370,11 @@ def plotNumberDist(scenario, i, j, k, **kwargs):
             ) ) 
 
     plt.suptitle(f'i={i}, j={j}, k={k}')
+    plt.tight_layout()
 
+    ax[0].set_box_aspect(1)
+    ax[1].set_box_aspect(1)
+    
 def plotNumberDists(scenarios, i, j, k, time, **kwargs):
     
     fig, ax = plt.subplots(1,2, figsize=(8,4))
@@ -291,7 +383,7 @@ def plotNumberDists(scenarios, i, j, k, time, **kwargs):
     
     xlims = kwargs.get('xlims', (5e-9, 5e-6))
     ylims = kwargs.get('ylims', (0, 10000))
-    numconctimeidx=kwargs.get('numconctimeidx', 72)
+    numconctimeidx=kwargs.get('numconctimeidx', Archive.n_times-1)
     local_binning = kwargs.get('local_binning', None)
     #colors = plt.cm.viridis(np.linspace(.2, .9, times.size))
 
@@ -352,7 +444,7 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     scenario_distdata = Archive.aerodist_data[scenario]
 
     # Configurable keyword arguments
-    times = kwargs.get('times', np.array([0, 24, 48, 72]))
+    times = kwargs.get('times', np.arange(0, Archive.n_times+1, int(Archive.n_times/(60/Archive.historydelta_m))))
     xlims = kwargs.get('xlims', (5e-9, 5e-6))
     if dist_type == 'num':
         ylims = kwargs.get('ylims', (0, 10000))
@@ -360,7 +452,7 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
         ylims = kwargs.get('ylims', (0, 1e-13))
     yscale = kwargs.get('yscale', 'linear')
     savefig = kwargs.get('savefig', True)
-    totconctimeidx=kwargs.get('totconctimeidx', 72)
+    totconctimeidx=kwargs.get('totconctimeidx', Archive.n_times-1)
     lognorm = kwargs.get('lognorm', False)
     if not isinstance(times, np.ndarray):
         times = np.array(times)
@@ -373,8 +465,8 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     legend_loc = kwargs.get('legend_loc', 'upper left')
     legend_ncol = kwargs.get('legend_ncol', len(times))
 
-    tot_conc_label = kwargs.get('tot_conc_var', f'TOT_{dist_type.upper()}_CONC')
-    tot_conc_title = kwargs.get('tot_conc_title', None)
+    tot_conc_label = kwargs.get('field_var', f'TOT_{dist_type.upper()}_CONC')
+    tot_conc_title = kwargs.get('field_title', None)
 
     fig = plt.figure(figsize=plt.figaspect(.5))
     ax = fig.add_subplot(1, 2, 1)
@@ -398,7 +490,7 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
             bin_vals.append(bin_data)
             x_vals.append(bin_idx)
 
-        ax.plot(scenario_distdata['BIN_CENTERS'][:].data[0], bin_vals, label=f'hr {(1/60)*Archive.historydelta_m*time:1.0f}', c=c, lw=1.5)
+        ax.plot(scenario_distdata['BIN_CENTERS'][:].data[0], bin_vals, label=f'h {(1/60)*Archive.historydelta_m*time:1.0f}', c=c, lw=1.5)
         ax.set_xscale('log')
 
     ax.set_xlim(xlims[0], xlims[1])
@@ -417,9 +509,17 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
 
     ax.set_xlabel('Diameter [m]', fontsize=label_size)
 
+    ax.grid(which = "major", linewidth = 1, axis='y', ls="dashed", dashes=(4,4), c='#414141', alpha=.5)
+    ax.grid(which = "minor", linewidth = 1, axis='y', ls="dashed", dashes=(6,6), c='white')
+    ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+    ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+    ax.tick_params(axis='both', labelsize=13, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+    ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
     # Second subplot
+    
     ax = fig.add_subplot(1, 2, 2, projection='3d')
-    X, Y = np.meshgrid(np.arange(40), np.arange(40))
+    X, Y = np.meshgrid(np.arange(Archive.domain_x_cells), np.arange(Archive.domain_y_cells))
 
     
     conc_min = scenario_aerodata[tot_conc_label][totconctimeidx, 0, :, :].min()
@@ -432,7 +532,25 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
 
     ax.contourf(X, Y, scenario_aerodata[tot_conc_label][totconctimeidx, k, :, :], 
                 cmap=plt.cm.Spectral_r, norm=norm, zdir='z', offset=k)
-    ax.plot([i], [j], zs=k, zdir='z', marker='*', c='white', markeredgecolor='k', 
+    if local_binning:
+
+        data = scenario_aerodata[tot_conc_label][totconctimeidx, k, :, :].data
+        data[:] = np.nan
+        data[j-local_binning:j+local_binning, i-local_binning:i+local_binning] = .1
+        
+        ax.contourf(X, Y, data, 
+                cmap=plt.cm.Greys, zdir='z', vmin=0, vmax=1, offset=k, alpha=.5)
+
+        width = 2
+        data[j-local_binning-width:j-local_binning, i-local_binning-width:i+local_binning+width] = 1
+        data[j+local_binning:j+local_binning+width, i-local_binning-width:i+local_binning+width] = 1
+        data[j-local_binning:j+local_binning, i-local_binning-width:i-local_binning] = 1
+        data[j-local_binning:j+local_binning, i+local_binning:i+local_binning+width] = 1
+        data[j-local_binning:j+local_binning, i-local_binning:i+local_binning] = np.nan
+        ax.contourf(X, Y, data, 
+                cmap=plt.cm.Greys, zdir='z', vmin=0, vmax=1, offset=k, alpha=.8)
+    else:
+        ax.plot([i], [j], zs=k, zdir='z', marker=kwargs.get('subset_marker', '*'), c='white', markeredgecolor='k', 
             markeredgewidth=.5, markersize=12, zorder=10)
 
     nx = scenario_aerodata.dimensions['west_east'].size
