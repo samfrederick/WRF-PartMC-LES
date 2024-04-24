@@ -1,0 +1,56 @@
+{
+    "aitken_mode": {
+        "number_conc [m^-3]": 3200000000.0,
+        "geom_mean_diam [m]": 2e-08,
+        "geom_std_dev": 1.45,
+        "mass_frac": {
+            "SO4": 0.3636,
+            "NO3": 0,
+            "Cl": 0,
+            "NH4": 0.1364,
+            "MSA": 0,
+            "ARO1": 0,
+            "ARO2": 0,
+            "ALK1": 0,
+            "OLE1": 0,
+            "API1": 0,
+            "API2": 0,
+            "LIM1": 0,
+            "LIM2": 0,
+            "CO3": 0,
+            "Na": 0,
+            "Ca": 0,
+            "OIN": 0,
+            "OC": 0.5,
+            "BC": 0,
+            "H2O": 0
+        }
+    },
+    "accum_mode": {
+        "number_conc [m^-3]": 2900000000.0,
+        "geom_mean_diam [m]": 1.16e-07,
+        "geom_std_dev": 1.65,
+        "mass_frac": {
+            "SO4": 0.3636,
+            "NO3": 0,
+            "Cl": 0,
+            "NH4": 0.1364,
+            "MSA": 0,
+            "ARO1": 0,
+            "ARO2": 0,
+            "ALK1": 0,
+            "OLE1": 0,
+            "API1": 0,
+            "API2": 0,
+            "LIM1": 0,
+            "LIM2": 0,
+            "CO3": 0,
+            "Na": 0,
+            "Ca": 0,
+            "OIN": 0,
+            "OC": 0.5,
+            "BC": 0,
+            "H2O": 0
+        }
+    }
+}
