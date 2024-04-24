@@ -47,9 +47,7 @@ def _plotSignificance(rel_diff, ax, thres_n_std_dev=5, skipzero=False):
 
     ax.pcolor(zm.T, hatch='.', alpha=0.)
 
-
-"""
-def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False):
+def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
     
     if variable not in Archive.nsh_dict[scenario]:
         print(f'{variable} not in NSH dictionary for {scenario}, calculating')
@@ -67,14 +65,20 @@ def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False):
     cs = ax.pcolormesh(nsh_array.T, norm=norm)
     cbar = fig.colorbar(cs, label='NSH')
 
-    ax.set_xlabel('Time (mins)', fontsize=12)
     ax.set_ylabel('z [km]', fontsize=12)
-    ax.set_xticks(np.linspace(0, Archive.n_times-1, 13))
-    ax.set_xticklabels(Archive.historydelta_m*np.linspace(0, Archive.n_times-1, 13))
+
+    # Set x-axis ticks and label
+    xtick_units = kwargs.get('xtick_units', 'm') 
+    xtick_delta = kwargs.get('xtick_delta_t', 30)
+    xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xtick_labels)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(f'{scenario}, NSH ({variable})')
-"""
+
 def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, mixingratio=True, **kwargs):
     
     var_array = calculateVarZT(scenario, variable, mixingratio)
@@ -146,8 +150,16 @@ def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, m
 
 def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwargs):
     #var_array = calculateVarZT(scenario, variable, mixingratio)
-    fig, axs  = plt.subplots(len(variables),1, figsize=(12,12))
+    n_vars = len(variables)
+    if not kwargs.get('ax'):
+        fig, axs  = plt.subplots(n_vars,1, figsize=(kwargs.get('subplot_width', 12),n_vars*kwargs.get('subplot_height', 3)))
+    else:
+        axs = kwargs.get('ax')
+    if kwargs.get('general_scenario_label'):
+        labels= Archive.getScenarioGeneralLabels()   
 
+    if not isinstance(axs, np.ndarray):
+        axs = np.array([axs])
     for ax, variable in zip(axs, variables):
         for scenario in scenarios:
             times = np.arange(Archive.n_times)
@@ -159,9 +171,12 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
                 else:
                     level_array = Archive.aero_data[scenario][variable][itime, zlevel, :, :]
                 var_array[itime] = level_array.mean()
-                
 
-            ax.plot(times, var_array, label = scenario)
+            if kwargs.get('general_scenario_label'):
+                label = labels[scenario]
+            else:
+                label = scenario
+            ax.plot(times, var_array, label = label)
 
         if mixingratio:
             var_units = 'Mixing Ratio'
@@ -169,7 +184,8 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
             var_units = 'Concentration'
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
-        ax.legend()
+        if kwargs.get('plot_legend', True):
+            ax.legend()
         # Set x-axis ticks and label
         xtick_units = kwargs.get('xtick_units', 'm') 
         xtick_delta = kwargs.get('xtick_delta_t', 30)
@@ -182,6 +198,16 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
         #ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
         #ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
         ax.set_title(f'{variable}')
+
+        if kwargs.get('grid', True):
+            ax.set_xlim(0, (Archive.n_times-1))
+            ax.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='#414141', alpha=.5)
+            ax.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white')
+            ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.tick_params(axis='both', labelsize=13, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+            ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
     plt.suptitle(f'Z-level: {zlevel}')
     plt.tight_layout()
 
@@ -189,23 +215,41 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
     #var_array = calculateVarZT(scenario, variable, mixingratio)
     fig, axs  = plt.subplots(1,len(variables), figsize=(len(variables)*4,4.5))
 
+    if kwargs.get('general_scenario_label'):
+        labels= Archive.getScenarioGeneralLabels()   
+
     for ax, variable in zip(axs, variables):
         for scenario in scenarios:
             #times = np.arange(Archive.n_times)
             var_array = np.zeros((Archive.n_times))
-            if variable in aero_vars:
-                inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
-                array = 1e9*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
-                var_units = 'Mixing Ratio (ppbv)'
-            elif variable in gas_vars:
+            variable_fmt = variable
+            if variable in Archive.aero_vars:
+                if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+                    inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
+                    array = 1e9*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
+                    var_units = 'Mixing Ratio (ppbv)'
+                else:
+                    array = Archive.aero_data[scenario][variable][time, :, :, :]
+                    var_units = ''
+                variable_fmt = Archive.aerosol_fmt_map[variable]
+            elif variable in Archive.gas_vars:
                 array = 1000*Archive.aero_data[scenario][variable][time, :, :, :] # convert ppmv to ppbv
                 var_units = 'Mixing Ratio (ppbv)'
-            elif variable in wrf_vars:
+                variable_fmt = Archive.gas_fmt_map[variable]
+            elif variable in Archive.wrf_vars:
                 array = Archive.aero_data[scenario][variable][time, :, :, :]
                 var_units = ''
             array_mean = array.mean(axis=(1,2))
+
+            if kwargs.get('general_scenario_label'):
+                label = labels[scenario]
+            else:
+                label = scenario
                 
-            ax.plot(array_mean, np.arange(100), label = scenario)
+            ax.plot(array_mean, np.arange(100), label=label)
+            #if kwargs.get('plot_std'):
+            #    array_std = array.std(axis=(1,2))
+            #    ax.fill_betweenx(np.arange(100), array_mean-array_std, array_mean+array_std, alpha=.4)
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
         ax.legend()
@@ -213,7 +257,17 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
         ax.set_ylabel('z [km]', fontsize=12)
         ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
         ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
-        ax.set_title(f'{variable}')
+        ax.set_title(f'{variable_fmt}')
+
+        ax.set_ylim(0, Archive.n_levels)
+        if kwargs.get('grid', True):
+            ax.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='#414141', alpha=.5)
+            ax.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white')
+            ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.tick_params(axis='both', labelsize=13, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+            ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
     delta_t = Archive.historydelta_m
     plt.suptitle(f'Time: {delta_t*time} m')
     plt.tight_layout()
