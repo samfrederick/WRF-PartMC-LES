@@ -10,7 +10,28 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=sf20@illinois.edu
 
-#path to WRF simulation
+# Initial condition and emission profile parameters
+#scenario='uniform-basecase'
+#scenario='fx2fy2'
+#scenario='fx1fy0'
+#scenario='road-10x'
+#scenario='point-source-10x10'
+scenario='point-source-1x1'
+
+# Emission rates for aerosols, gases
+EMISS_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions
+#gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss.csv
+gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss_no-ammonia.csv # SF 4/23/24: Run scenario with no ammonia gas emissions 
+aero_emiss_data_path=$EMISS_PATH/urbanplume_aero_emiss.csv
+
+# Initial Conditions for aerosols, gases
+IC_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/initial-conditions
+#aero_ic_data_path=$IC_PATH/urbanplume_aero_ics.json
+#gas_ic_data_path=$IC_PATH/urbanplume_gas_ics.csv
+aero_ic_data_path=$IC_PATH/urbanplume_aero_ics_no-ammonium.json # SF 4/23/24: Run scenario with no initial ammonium in aerosol
+gas_ic_data_path=$IC_PATH/urbanplume_gas_ics_no-ammonia.csv # SF 4/23/24: Run scenario with no initial ammonia gas conc
+
+# Path to WRF-LES simulation
 SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
 cd $SIM_PATH
 
@@ -48,13 +69,6 @@ module load gnu/openmpi-3.1.6-gnu-9.3.0
 
 export MKL_DEBUG_CPU_TYPE=5
 export MKL_CBWR=COMPATIBLE
-
-# Initial condition and emission profile parameters
-#scenario='uniform-basecase'
-#scenario='fx2fy2'
-#scenario='point-source-10x10'
-scenario='point-source-1x1'
-#overlap_precursors=1 # 1 is true, 0 is false
 
 # Get simulation configuration (chemical mechanism, domain dimensions)
 file_path="namelist.input"
@@ -111,15 +125,16 @@ echo "Number of grid cells in south-north: $extent_sn"
 echo "Number of grid cells in vertical: $extent_vert"
 
 # set emissions (gases and aerosols)
-python $SIM_PATH/create_aero_emit_dists.py $OUTPUT_PATH $scenario $extent_we $extent_sn $extent_vert
+python $SIM_PATH/create_aero_emit_dists.py $OUTPUT_PATH $scenario $extent_we $extent_sn $extent_vert $gas_emiss_data_path $aero_emiss_data_path
+
 # set intial conditions (uniform distribution)
-python $SIM_PATH/create_aero_ics.py $OUTPUT_PATH 'uniform-basecase' $extent_we $extent_sn $extent_vert
+python $SIM_PATH/create_aero_ics.py $OUTPUT_PATH 'uniform-basecase' $extent_we $extent_sn $extent_vert $aero_ic_data_path
 
 echo
 time mpirun -np 8 ./ideal.exe 
 
-# modify gas initial conditions profiles
-python $SIM_PATH/json_io.py $OUTPUT_PATH $CHEM_OPT $scenario
+# set gas initial conditions
+python $SIM_PATH/write_gas_ic_json.py $OUTPUT_PATH $CHEM_OPT $scenario $gas_ic_data_path
 python $SIM_PATH/edit_wrfinput_initcond.py $OUTPUT_PATH $CHEM_OPT $extent_we $extent_sn $extent_vert $scenario
 
 echo 
@@ -130,5 +145,4 @@ timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 echo "End : $timestamp"
 
 cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
-#rm -rf $OUTPUT_PATH
 rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
