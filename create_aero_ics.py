@@ -8,9 +8,11 @@ import shutil
 from pathlib import Path
 import numpy as np
 import os, sys
+import json
 import netCDF4 as nc
 from emiss_profiles import checkerboard_profile
 
+"""
 urban_plume_aero_ics = {'aitken_mode': {'number_conc [m^-3]': 3.2e9, # 3200 per cubic cm
                                         'geom_mean_diam [m]': 0.02e-6,
                                         'geom_std_dev': 1.45,
@@ -40,13 +42,17 @@ urban_plume_aero_ics = {'aitken_mode': {'number_conc [m^-3]': 3.2e9, # 3200 per 
                                                       'BC': 0,'H2O': 0}
                                          },
                         }
+"""
 
-def createICReference(job_path, set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
+def createICReference(job_path, aero_ics_path, set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
 
     if set_zero_conc:
         file_prefix = 'nonzero'
     else:
         file_prefix = 'zero'
+    
+    with open(aero_ics_path, 'r') as infile:    
+        urban_plume_aero_ics = json.load(infile)
     
     file_path = f'{job_path}/ics/ic_{file_prefix}_reference.nc'
     ncfile = nc.Dataset(file_path, 'w')
@@ -167,6 +173,8 @@ if __name__ == '__main__':
     domain_y_cells = int(sys.argv[4]) # number of grid cells in y direction
     domain_z_cells = int(sys.argv[5]) # number of grid cells in y direction
 
+    aero_ics_path = sys.argv[6]
+
     print(f'Setting aerosol ICs with scenario: {scenario}')
 
     simdir = Path(__file__).parent
@@ -184,10 +192,12 @@ if __name__ == '__main__':
     scaling_factor = basecase_arr.sum() / scenario_arr.sum()
 
     filepath_nonzero_ic = createICReference(job_path,
+                                            aero_ics_path,
                                             set_zero_conc=False,
                                             domain_z_cells=domain_z_cells, 
                                             ic_scaling=scaling_factor)
     filepath_zero_ic = createICReference(job_path,
+                                         aero_ics_path,
                                          set_zero_conc=True, 
                                          domain_z_cells=domain_z_cells, 
                                          ic_scaling=scaling_factor)

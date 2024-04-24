@@ -16,9 +16,9 @@ from emiss_profiles import checkerboard_profile
 aero_species = ['SO4','NO3','Cl','NH4','MSA','ARO1','ARO2','ALK1','OLE1','API1',
                 'API2','LIM1','LIM2','CO3','Na','Ca','OIN','OC','BC','H2O']  
 
-def load_urban_plume_aero_props():
+def load_urban_plume_aero_props(data_path):
     #TODO use os.get_cwd()
-    aero_emiss = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions/urban_plume_aero_emiss.csv')
+    aero_emiss = pd.read_csv(data_path)
     return aero_emiss
 
 # ------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ def set_vol_frac(n_times, n_modes, n_aero_specs):
 
     return vol_frac
 
-def set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling):
+def set_gas_emission(data_path, n_times, n_gas_specs, set_zero_conc, emission_scaling):
 
     emission_rates = np.zeros((n_times, n_gas_specs))
 
@@ -106,7 +106,7 @@ def set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling):
 
         # Use emission rates from PartMC Urban-Plume scenario (rates from Riemer et al 2009)
         #TODO use os.get_cwd()
-        emiss_data = pd.read_csv('/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions/urbanplume_gas_emiss_rates.csv')
+        emiss_data = pd.read_csv(data_path)
         for itime in range(n_times):
             for ispec in range(n_gas_specs):
                 spec_emiss_rate = emiss_data.loc[ispec, 'Emission rate (mol m^{-2} s^{-1})']
@@ -121,7 +121,7 @@ def set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling):
 # 
 # ------------------------------------------------------------------------------
 
-def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
+def create_emit_ncfile(job_path, gas_emiss_data_path, aero_emiss_data_path, set_zero_conc=False, emission_scaling=1.0):
 
     if set_zero_conc:
         file_prefix = 'nonzero'
@@ -135,7 +135,7 @@ def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
     ncfile = nc.Dataset(f'{job_path}/{filename}', 'w')
 
     URBAN_PLUME_EMISS = True
-
+    
     # Dimension values
     n_times = 24
     n_modes = 3 # 1 aerosol mode per urban plume source
@@ -204,7 +204,7 @@ def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
 
     # Set aerosol emission values
     if URBAN_PLUME_EMISS:
-        aero_props = load_urban_plume_aero_props()
+        aero_props = load_urban_plume_aero_props(aero_emiss_data_path)
         aero_emission_rate_scale[:] = 1 # set all rates to 1
         aero_emission_time[:] = np.arange(0, n_times*one_hour, one_hour) # set times to each hour during a 24hr period
 
@@ -272,7 +272,7 @@ def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
     gas_emission.long_name = "gas emissions"
     gas_emission.standard_name = "gas emissions"
     gas_emission.description = "gas phase emission rates."
-    gas_emission[:] = set_gas_emission(n_times, n_gas_specs, set_zero_conc, emission_scaling)
+    gas_emission[:] = set_gas_emission(gas_emiss_data_path, n_times, n_gas_specs, set_zero_conc, emission_scaling)
 
     # Set the gas emissions rates to zero for first hour of the simulation
     if URBAN_PLUME_EMISS:
@@ -284,12 +284,15 @@ def create_emit_ncfile(job_path, set_zero_conc=False, emission_scaling=1.0):
 
 if __name__ == '__main__':
 
-    job_path = sys.argv[1]
+    job_path = sys.argv[1] # path to where the simulation is run, output stored
     scenario = sys.argv[2] # emissions scenario
 
     domain_x_cells = int(sys.argv[3]) # number of grid cells in x direction
     domain_y_cells = int(sys.argv[4]) # number of grid cells in y direction
     domain_z_cells = int(sys.argv[5]) # number of grid cells in y direction
+
+    gas_emiss_data_path = sys.argv[6]
+    aero_emiss_data_path = sys.argv[7]
 
     simdir = Path(__file__).parent
     aero_emit_dist_path = f'{job_path}/aero_emit_dists'
@@ -308,10 +311,10 @@ if __name__ == '__main__':
 
     scaling_factor = basecase_arr.sum() / scenario_arr.sum()
 
-    filename_nonzero_emiss = create_emit_ncfile(job_path,
+    filename_nonzero_emiss = create_emit_ncfile(job_path, gas_emiss_data_path, aero_emiss_data_path,
                                                 set_zero_conc=False, 
                                                 emission_scaling=scaling_factor)
-    filename_zero_emiss = create_emit_ncfile(job_path,
+    filename_zero_emiss = create_emit_ncfile(job_path, gas_emiss_data_path, aero_emiss_data_path,
                                              set_zero_conc=True, 
                                              emission_scaling=scaling_factor)
 
