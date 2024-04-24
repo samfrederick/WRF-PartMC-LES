@@ -42,6 +42,8 @@ def convertMassConctoVolumeMixingRatio(scenario_data, species_name, species_mola
 
 
 def calculateNSHTimeSlice(scenario, variable):
+    if variable in Archive.nsh_dict[scenario]:
+       return Archive.nsh_dict[scenario][variable]
     
     scenario_aerodata = Archive.aero_data[scenario]
     
@@ -101,7 +103,7 @@ def calcTotConcZT(scenario, dist_type, min_particle_size):
 
     #scenario_aerodata = aerodata_dict[scenario]['aerodata']
     scenario_distdata = Archive.aerodist_data[scenario]['distdata']
-    xgrid, ygrid, kgrid = 40, 40, 100
+    xgrid, ygrid, kgrid = Archive.gridsize, Archive.gridsize, 100
     var_array = np.zeros((Archive.n_times, kgrid, ygrid, xgrid))
 
     bin_edges = scenario_distdata['BIN_EDGES'][:].data[0]#scenario_aerodata['BIN_EDGES'][:].data[0]
