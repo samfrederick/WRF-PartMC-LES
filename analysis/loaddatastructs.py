@@ -1,6 +1,9 @@
 import os
 import netCDF4 as nc
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as mplcolors
 
 class DataStruct:
     wrf_vars = ['T', 'P', 'ALT', 'PB', 'DNW', 'DN', 'Z', 'Z_AT_W', 'MAPFAC_M', 'MAPFAC_U', 'MAPFAC_V', 'MAPFAC_MX', 
@@ -55,8 +58,10 @@ class DataStruct:
 
     archive_path = None
     aero_data = {}
+    scenario_colors = {}
     aerodist_data = {}
     wrf_data = {}
+    scenario_slurm_map = {}
     nsh_dict = {}
     boxplot_data = {}
     gas_fmt_map = {}
@@ -78,6 +83,7 @@ class DataStruct:
         self.aero_data[scenario_name] =  nc.Dataset(f'{self.archive_path}/slurm-{slurm_id}/aerosols_d01_{start}')
         self.aerodist_data[scenario_name] =  nc.Dataset(f'{self.archive_path}/slurm-{slurm_id}/aerosol_dist_d01_{start}')
         self.wrf_data[scenario_name] = nc.Dataset(f'{self.archive_path}/slurm-{slurm_id}/wrfout_d01_{start}')
+        self.scenario_slurm_map[scenario_name] = slurm_id
         self.nsh_dict[scenario_name] = {}
 
         if (scenario_name == 'uniform-basecase' and not self.n_times):
@@ -176,10 +182,222 @@ class DataStruct:
         scenario_sh = self.getScenarioSH()
         scenario_labels = {}
         for i, scenario in enumerate(scenario_sh.keys()):
-            scenario_labels[scenario] = f'Scenario {i}'
+            if scenario == 'uniform-basecase':
+                scenario_labels[scenario] = 'Uniform base case'
+            else:
+                scenario_labels[scenario] = f'Scenario {i}'
         return scenario_labels
+    
+    def getScenarioColors(self):
+        
+        scenario_colors = {"uniform-basecase": "",
+                           "fx2fy2": "", 
+                           "fx1fy0": "", 
+                           "road-10x": "", 
+                           "point-source-10x10": "", 
+                           "point-source-1x1": ""}
+        viridis = plt.get_cmap('viridis')
+        for i, scenario in zip(np.linspace(0.1, .9, len(scenario_colors.keys())), scenario_colors.keys()):
+            if scenario == 'uniform-basecase':
+                scenario_colors[scenario] = 'k'
+            else:
+                rgba = viridis(i)
+                hex_color = mplcolors.to_hex(rgba)
+                scenario_colors[scenario] = hex_color
+
+        return scenario_colors
+
 
 global Archive
 Archive = DataStruct()
 
 
+class GriddedOutputDataStruct(DataStruct):
+    bin_edges = None
+    bin_logwidth = None
+    bin_geocenter = None
+    n_bins = None
+    bin_min = None
+    bin_max = None
+    gridded_data = {}
+
+    #sim_dict = None  # replace with wrf_data?
+    
+    #t_idx = None # NOTE: what is this for?
+
+    # Try using the inherited dictionaries from the DataStruct class
+    #gas_species = None
+    #aero_species = None
+
+    # use domain_x_cells and domain_y_cells from inherited DataStruct class
+    #nx = None
+    #ny = None
+
+    def __init__(self):
+        # Assume default WRF-PartMC binning scheme (100 bins ranging from 1e-9 to 1e-3 m)
+        self.bin_min= -9
+        self.bin_max = -3
+        self.n_bins = 101
+        self.bin_edges = np.logspace(self.bin_min, self.bin_max, self.n_bins)
+        self.bin_logwidth = (np.log10(self.bin_edges[1:]) - np.log10(self.bin_edges[0:-1]))[0]
+        self.bin_geocenter = np.sqrt(self.bin_edges[:-1]*self.bin_edges[1:])
+        
+        # if necessary
+        self.aero_species = [var.replace('pmc_', '').upper() for var in self.aero_vars if var.startswith('pmc')]
+        self.gas_species = [var.upper() for var in self.gas_vars]
+    
+    def _getVertGridCellPartIndices(self, data, k):
+        # return the start and end indices of the particles in the requested kth vertical 
+        # grid cell
+        # TODO: with this method I'm getting one less particle in the topmost grid cell
+        # when I check against data['n_parts'][-1].item()
+        #k -= 1 # convert from one indexing to zero indexing 
+
+        start_idx = data['part_start_index'][k]
+        n_parts_in_cell = data['n_parts'][k].item()
+        end_idx = start_idx + n_parts_in_cell
+        return start_idx, end_idx
+    
+    def _getParticleDiameters(self, data):
+        particle_volume = (data['aero_particle_mass'][:].T/data['aero_density'][:].reshape(1, 20)).sum(axis=1)
+        particle_diameter = np.cbrt(particle_volume*(6/np.pi))
+        return particle_diameter
+
+
+    def _computeParticleKappa(self, data):
+        aero_density = data['aero_density']
+        aero_kappa = data['aero_kappa']
+
+        # volume fraction of each solid species (every species except last component which is water)
+        aero_solid_volume = (data['aero_particle_mass'][:] /aero_density[:].data[:, np.newaxis]).data[:-1, :]
+
+        # sum up the volumes for all solid species 
+        aero_solid_total_volume = aero_solid_volume.sum(axis=0)
+
+        # volume fraction of each solid species
+        aero_solid_volume_frac = aero_solid_volume/aero_solid_total_volume
+
+        kappa = (aero_solid_volume_frac * aero_kappa[:].data[:-1, np.newaxis]).sum(axis=0)
+
+        return kappa
+
+    def processCrossSection(self, data_path, xstart, xend, ystart, yend, z_idx, t_idx):
+
+        xwidth = xend-xstart + 1
+        ywidth = yend-ystart + 1
+
+        crosssec_aero_diams = np.array([])
+        crosssec_aero_masses = np.zeros((20, 1))
+        crosssec_aero_numconc = np.array([])
+        crosssec_aero_kappa = np.array([])
+
+        crosssec_aero_component_start_ind = np.zeros((xwidth, ywidth)).astype(int)
+        cell_start_idx = 0
+        for x_idx in np.arange(xwidth):
+            for y_idx in np.arange(ywidth):
+                x_cell = xstart + x_idx
+                y_cell = ystart + y_idx
+                filename = f'gridded-output_{str(x_cell).zfill(3)}_{str(y_cell).zfill(3)}_{str(t_idx).zfill(8)}.nc'
+
+                data = nc.Dataset(os.path.join(data_path, filename))
+
+                # Retreive aerosol particle array indices for vertical level
+                start_idx, end_idx = self._getVertGridCellPartIndices(data, z_idx)
+
+                # Aerosol Diameters
+                particle_diameters = self._getParticleDiameters(data)
+                level_part_diams = particle_diameters[start_idx:end_idx]
+                #print(cell_part_diams[:1])
+                # Store the aerosol particle diameters in a 1D array for the specified vertical level
+                crosssec_aero_diams = np.append(crosssec_aero_diams, level_part_diams)
+
+                # Aerosol Masses
+                level_part_masses = data['aero_particle_mass'][:, start_idx:end_idx] # constituent masses of each aerosol particle
+                #print(cell_part_masses[:, :1][0])
+                # Store the aerosol particle masses in a 20 X N for the specified vertical level (N total number of aerosol particles in the level)
+                # 20 constituent species masses in each aerosol particle
+                crosssec_aero_masses = np.append(crosssec_aero_masses, level_part_masses, axis=1)
+
+                # Aerosol number concentration
+                level_aero_numconc = data['aero_num_conc'][start_idx:end_idx]
+                crosssec_aero_numconc = np.append(crosssec_aero_numconc, level_aero_numconc)
+                
+                # Aerosol kappa (hygroscopicity)
+                aero_kappa = self._computeParticleKappa(data)
+                cell_aero_kappa = aero_kappa[start_idx:end_idx]
+                crosssec_aero_kappa = np.append(crosssec_aero_kappa, cell_aero_kappa)
+                
+                # Store location to the starting index for the aerosol particle in each grid cell (dimensions nx x ny for accessing aerosol particles in each cell)
+                crosssec_aero_component_start_ind[x_idx, y_idx] = cell_start_idx
+                cell_start_idx  = cell_start_idx + (end_idx-start_idx)
+
+
+        crosssec_aero_masses = crosssec_aero_masses[:, 1:] # need to remove the first element since array of zeros used as placeholder 
+
+        return crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa
+    
+    def loadData(self, scenario, xstart, xend, ystart, yend, z_idx, t_idx, verbose=True):
+        slurmid = self.scenario_slurm_map[scenario]
+        output_path = self.archive_path
+        output_subdir = os.path.join(output_path, f'slurm-{slurmid}')
+
+        if os.path.isfile(f'./crosssec_data/crosssec_{scenario}_t{t_idx}_z{z_idx}.nc'):
+            if verbose:
+                print('Loading file')
+            crosssec_data = nc.Dataset(f'./crosssec_data/crosssec_{scenario}_t{t_idx}_z{z_idx}.nc', 'r', format='NETCDF4')
+            # load the environmental variables
+            crosssec_aero_diams = crosssec_data['aero_diams'][:]
+            crosssec_aero_numconc = crosssec_data['aero_numconc'][:]
+            crosssec_aero_masses = crosssec_data['aero_masses'][:]
+            crosssec_aero_kappa = crosssec_data['aero_kappa'][:]
+
+            crosssec_data.close()
+        else:
+            if verbose:
+                print('File does not exist, processing data')
+            data_tuple = self.processCrossSection(output_subdir, xstart, xend, ystart, yend, z_idx, t_idx)
+            crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa = data_tuple
+
+            history_dt = self.historydelta_m/60 # hours
+            time =  (t_idx-1)*history_dt
+            processed_data = nc.Dataset(f'./crosssec_data/crosssec_{scenario}_t{t_idx}_z{z_idx}.nc', 'w', format='NETCDF4')
+            processed_data.description = f'Processed cross-section simulation data at time = {time} hr, zlevel = {z_idx}'
+            # dimensions
+            #time_dim_size = 7
+            #processed_data.createDimension('time', time_dim_size)
+            n_particles = crosssec_aero_diams.size
+            processed_data.createDimension('n_particles', n_particles) #NOTE the issue with this approach is that the number of particle changes with time.
+            n_species = len(self.aero_species)
+            processed_data.createDimension('n_species', n_species)
+            aero_diams = processed_data.createVariable('aero_diams', 'f8', ('n_particles'))
+            aero_numconc = processed_data.createVariable('aero_numconc', 'f8', ('n_particles'))
+            aero_masses = processed_data.createVariable('aero_masses', 'f8', ('n_species', 'n_particles'))
+            aero_kappa = processed_data.createVariable('aero_kappa', 'f8', ('n_particles'))
+            
+            # variables
+            aero_diams[:] = crosssec_aero_diams
+            aero_numconc[:] = crosssec_aero_numconc
+            aero_masses[:] = crosssec_aero_masses
+            aero_kappa[:] = crosssec_aero_kappa
+
+            processed_data.close()
+        
+        xwidth = xend-xstart + 1
+        ywidth = yend-ystart + 1
+        n_total_cells = xwidth*ywidth
+
+        self.gridded_data[scenario] = {}
+        self.gridded_data[scenario]['xstart'] = xstart
+        self.gridded_data[scenario]['xend'] = xend
+        self.gridded_data[scenario]['ystart'] = ystart
+        self.gridded_data[scenario]['yend'] = yend
+        self.gridded_data[scenario]['n_total_cells'] = n_total_cells
+        self.gridded_data[scenario]['aero_diams'] = crosssec_aero_diams
+        self.gridded_data[scenario]['aero_numconc'] = crosssec_aero_numconc
+        self.gridded_data[scenario]['aero_masses'] = crosssec_aero_masses
+        self.gridded_data[scenario]['aero_kappa'] = crosssec_aero_kappa
+        #return crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses
+
+    
+global GriddedOutput
+GriddedOutput = GriddedOutputDataStruct()
