@@ -41,22 +41,31 @@ def convertMassConctoVolumeMixingRatio(scenario_data, species_name, species_mola
     return VMR
 
 
-def calculateNSHTimeSlice(scenario, variable):
+def calculateNSHTimeSlice(scenario, variable, store_result=True, **kwargs):
     if variable in Archive.nsh_dict[scenario]:
        return Archive.nsh_dict[scenario][variable]
     
     scenario_aerodata = Archive.aero_data[scenario]
     
-    levels = np.arange(Archive.n_levels)
-    times = np.arange(Archive.n_times)
-    nsh_array = np.zeros((Archive.n_times, Archive.n_levels))
-    for itime in times:
-        for ilevel in levels:
+    if kwargs.get("times"):
+        times = np.array(kwargs.get("times"))
+    else:
+        times = np.arange(Archive.n_times)
+    if kwargs.get("levels"):
+        levels = np.array(kwargs.get("levels"))
+    else:
+        levels = np.arange(Archive.n_levels)
+    
+    
+    nsh_array = np.zeros((times.size, levels.size))
+    for t_idx, itime in enumerate(times):
+        for l_idx, ilevel in enumerate(levels):
             level_array = scenario_aerodata[variable][itime, ilevel, :, :]
             nsh_estimate = mcnormspatialhet(level_array, n_permutes=10000)
-            nsh_array[itime, ilevel] = nsh_estimate
+            nsh_array[t_idx, l_idx] = nsh_estimate
     
-    Archive.nsh_dict[scenario][variable] = nsh_array
+    if store_result:
+        Archive.nsh_dict[scenario][variable] = nsh_array
     return nsh_array
 
 def calculateVarZT(scenario, variable, mixingratio=True):
