@@ -20,22 +20,23 @@ scenario='point-source-1x1'
 
 # Emission rates for aerosols, gases
 EMISS_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions
-#gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss.csv
-gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss_no-ammonia.csv # SF 4/23/24: Run scenario with no ammonia gas emissions 
+gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss.csv
+#gas_emiss_data_path=$EMISS_PATH/urbanplume_gas_emiss_no-ammonia.csv # SF 4/23/24: Run scenario with no ammonia gas emissions 
 aero_emiss_data_path=$EMISS_PATH/urbanplume_aero_emiss.csv
 
 # Initial Conditions for aerosols, gases
 IC_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/initial-conditions
-#aero_ic_data_path=$IC_PATH/urbanplume_aero_ics.json
-#gas_ic_data_path=$IC_PATH/urbanplume_gas_ics.csv
-aero_ic_data_path=$IC_PATH/urbanplume_aero_ics_no-ammonium.json # SF 4/23/24: Run scenario with no initial ammonium in aerosol
-gas_ic_data_path=$IC_PATH/urbanplume_gas_ics_no-ammonia.csv # SF 4/23/24: Run scenario with no initial ammonia gas conc
+aero_ic_data_path=$IC_PATH/urbanplume_aero_ics.json
+gas_ic_data_path=$IC_PATH/urbanplume_gas_ics.csv
+#aero_ic_data_path=$IC_PATH/urbanplume_aero_ics_no-ammonium.json # SF 4/23/24: Run scenario with no initial ammonium in aerosol
+#gas_ic_data_path=$IC_PATH/urbanplume_gas_ics_no-ammonia.csv # SF 4/23/24: Run scenario with no initial ammonia gas conc
 
 # Path to WRF-LES simulation
 SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
 cd $SIM_PATH
 
-ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
+#ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
+ARCHIVE_PATH=/data/keeling/a/sf20/e/wrf-partmc-gridded-output  # SF 4/30/24: Add path for gridded output directory on E drive
 OUTPUT_PATH=$ARCHIVE_PATH/slurm-$SLURM_JOB_ID
 mkdir $OUTPUT_PATH
 mkdir $OUTPUT_PATH/aero_emit_dists
@@ -145,4 +146,9 @@ timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 echo "End : $timestamp"
 
 cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
+
+# move gridded output
+mv $ARCHIVE_PATH/gridded-output*.nc $OUTPUT_PATH
+
 rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
+
