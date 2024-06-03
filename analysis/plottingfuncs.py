@@ -7,6 +7,7 @@ import matplotlib.patches as patches
 import matplotlib.animation as animation
 from matplotlib.ticker import FormatStrFormatter
 from math import ceil
+from scipy.ndimage.filters import gaussian_filter
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 
@@ -47,6 +48,36 @@ def _plotSignificance(rel_diff, ax, thres_n_std_dev=5, skipzero=False):
 
     ax.pcolor(zm.T, hatch='.', alpha=0.)
 
+def _plotContours(ZT_data, ax, **kwargs):
+    contour_smoothing = kwargs.get('smooth_contours', False)
+    smoothing_sigma = kwargs.get('contour_smoothing_sigma', 0.7)
+    contour_linewidth = kwargs.get('contour_linewidth', 1.5)
+    contour_label_fontsize = kwargs.get('contour_label_fontsize', 13)
+    contourmax = kwargs.get('contour_max', 15)
+    contourmin = kwargs.get('contour_min', -15)
+    ncontours = kwargs.get('n_contours', 9)
+    contour_levels = kwargs.get('contour_levels', [x for x in np.linspace(contourmin,contourmax, ncontours) if x!= 0])
+    contour_norm = kwargs.get('contour_norm', mplcolors.Normalize(contourmin, contourmax))
+    fmt = kwargs.get('contour_fmt', matplotlib.ticker.ScalarFormatter())
+    fmt.create_dummy_axis()
+    # for whatever reason, the bounds for the countours are one cell off, so the contours on the 
+    # rhs of plots was getting cut off. Shifting values to the right (one timestep) and copy paste
+    # entries for the intiial condition into a new array with dimension (nlevels, ntimes+1)
+    zt1 = ZT_data.T
+    shift=kwargs.get('shift', 1)
+    zt2 = np.zeros((zt1.shape[0], zt1.shape[1]+shift))
+    zt2[:, shift:] = zt1[:, :]
+    for i in range(shift):
+        zt2[:, i] = zt1[:, i]
+
+    if contour_smoothing:
+        zt2 = gaussian_filter(zt2, smoothing_sigma)
+
+    #CS = ax.contour(ZT_data.T, levels=contour_levels, cmap=kwargs.get('contour_cmap', 'gist_gray_r'))
+    CS = ax.contour(zt2, levels=contour_levels, cmap=kwargs.get('contour_cmap', 'gist_gray_r'), 
+                    norm=contour_norm, linewidths=contour_linewidth)
+    ax.clabel(CS, inline=True, fontsize=contour_label_fontsize, fmt=fmt)
+
 def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
     
     if variable not in Archive.nsh_dict[scenario]:
@@ -62,10 +93,10 @@ def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
         norm = mplcolors.Normalize(vmin, vmax)
     else:
         norm = None
-    cs = ax.pcolormesh(nsh_array.T, norm=norm)
+    cs = ax.pcolormesh(nsh_array.T, norm=norm,edgecolor='face')
     cbar = fig.colorbar(cs, label='NSH')
 
-    ax.set_ylabel('z [km]', fontsize=12)
+    ax.set_ylabel('z (km)', fontsize=12)
 
     # Set x-axis ticks and label
     xtick_units = kwargs.get('xtick_units', 'm') 
@@ -79,25 +110,119 @@ def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(f'{scenario}, NSH ({variable})')
 
-def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, mixingratio=True, **kwargs):
-    
-    var_array = calculateVarZT(scenario, variable, mixingratio)
-    
-    fig, ax  = plt.subplots(1,1, figsize=(12,5))
-    if lognorm:
-        norm = mplcolors.LogNorm(vmin, vmax)
+def plotMultipleNSH(scenario, variables, vmin=0, vmax=1, **kwargs):
+    fig, axs  = plt.subplots(len(variables),1, figsize=kwargs.get('figsize', (12, 5)))
+
+    if ((vmin != None) and (vmax != None)):
+        norm = mplcolors.Normalize(vmin, vmax)
     else:
         norm = None
-    cs = ax.pcolormesh(var_array.T, norm=norm)
 
-    if mixingratio:
-        var_units = 'mixing ratio'
-    else:
-        var_units = 'concentration'
+    for i, (ax, variable) in enumerate(zip(axs.flatten(), variables)):
+        variable_fmt = variable
+        if variable in Archive.aero_vars:
+            variable_fmt = Archive.aerosol_fmt_map[variable]
+        elif variable in Archive.gas_vars:
+            variable_fmt = Archive.gas_fmt_map[variable]
+
+        if variable not in Archive.nsh_dict[scenario]:
+            print(f'{variable} not in NSH dictionary for {scenario}, calculating')
+            nsh_array = calculateNSHTimeSlice(scenario, variable)
+        else:
+            nsh_array = Archive.nsh_dict[scenario][variable]
+
+        cs = ax.pcolormesh(nsh_array.T, norm=norm,edgecolor='face')
+
+
+        ax.set_ylabel('z (km)', fontsize=12)
+
+        # Set x-axis ticks and label
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+        if i != len(variables)-1:
+            ax.set_xticks([])
+        else:
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xtick_labels)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+
+        ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
+        ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+        #ax.set_title(f'$SH$, {variable_fmt}')
+        ax.text(-.2, 0.5, f'{variable_fmt}', ha='center', transform=ax.transAxes, fontsize=12)
+
+        if nsh_array.max() > 0.5:
+            contourmax = 1
+            contourmin = 0
+            ncontours = 6
+            kwargs['contour_max'] = contourmax
+            kwargs['contour_min'] = contourmin
+            kwargs['n_contours'] = ncontours
+        elif (nsh_array.max() < 0.5) and (nsh_array.max() > 0.25):
+            contourmax = .5
+            contourmin = 0
+            ncontours = 6
+            kwargs['contour_max'] = contourmax
+            kwargs['contour_min'] = contourmin
+            kwargs['n_contours'] = ncontours
+        elif (nsh_array.max() < 0.25) and (nsh_array.max() > 0.1):
+            contourmax = .25
+            contourmin = 0
+            ncontours = 6
+            kwargs['contour_max'] = contourmax
+            kwargs['contour_min'] = contourmin
+            kwargs['n_contours'] = ncontours
+        else:
+            contour_levels = np.logspace(-3, 0, 4)
+            kwargs['contour_levels'] = contour_levels
+        
+        _plotContours(nsh_array, ax, **kwargs)
     
-    title = kwargs.get('title', f'{scenario}, {variable}')
-    cbar_title = kwargs.get('cbar_title', f'{variable}, {var_units}')
-    cbar = fig.colorbar(cs, label=cbar_title)
+    fig.subplots_adjust(right=0.82)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+    fig.colorbar(cs, cax=cbar_ax, label='$SH$')
+
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-nsh-multivar-{scenario}.pdf', format='pdf', bbox_inches='tight')
+
+def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
+    
+    fig, ax  = plt.subplots(1,1, figsize=(12,4.5))
+    if lognorm:
+        norm = mplcolors.LogNorm(vmin, vmax)
+    elif (vmin and vmax):
+        norm = mplcolors.Normalize(vmin, vmax)
+
+    variable_fmt = variable
+    if variable in Archive.aero_vars:
+        if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+            var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=True)
+            var_array = 1e9*var_array  # convert to ppbv
+            var_units = 'Mixing Ratio (ppbv)'
+        else:
+            var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+            var_units = 'concentration'
+        variable_fmt = Archive.aerosol_fmt_map[variable]
+    elif variable in Archive.gas_vars:
+        var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+        var_array = 1000*var_array # convert ppmv to ppbv
+        var_units = 'Mixing Ratio (ppbv)'
+        variable_fmt = Archive.gas_fmt_map[variable]
+    elif variable in Archive.wrf_vars:
+        var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+        var_units = 'concentration'
+
+    cs = ax.pcolormesh(var_array.T, norm=norm, edgecolor='face')
+
+    if kwargs.get("plot_contours"):
+        _plotContours(var_array, ax, **kwargs)
+
+    title = kwargs.get('title', f'{scenario}, {variable_fmt}')
+    cbar_title = kwargs.get('cbar_title', f'{var_units}')
+    cbar = fig.colorbar(cs)
+    cbar.set_label(label=cbar_title, fontsize=13)
+    cbar.ax.tick_params(labelsize=12)
 
     # Set x-axis ticks and label
     xtick_units = kwargs.get('xtick_units', 'm') 
@@ -105,28 +230,106 @@ def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, mixingratio=
     xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels)
-    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=14)
 
     # Set y-axis ticks and label
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
-    ax.set_ylabel('z [km]', fontsize=12)
+    ax.set_ylabel('z (km)', fontsize=14)
+    ax.tick_params(axis='both', which='major', labelsize=13)
 
-    ax.set_title(title)
+    ax.set_title(title, fontsize=14)
 
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-{variable}-{scenario}.pdf', format='pdf', bbox_inches='tight')
 
-def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, mixingratio=True, **kwargs):
+def plotFourPanelZT(scenarios, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
     
-    var_array = calculateVarZT(scenario, variable, mixingratio)
+    fig, axs  = plt.subplots(2,2, figsize=(6.5,4.5))
+    plt.subplots_adjust(hspace=.3, wspace=.1)
+
+    if lognorm:
+        norm = mplcolors.LogNorm(vmin, vmax)
+    elif (vmin and vmax):
+        norm = mplcolors.Normalize(vmin, vmax)
+
+    if len(scenarios) != 4:
+        raise AttributeError("Number of scenarios must be four")
+    
+    labels= Archive.getScenarioGeneralLabels()
+    
+    for i, (ax, scenario) in enumerate(zip(axs.flatten(), scenarios)):
+
+        variable_fmt = variable
+        if variable in Archive.aero_vars:
+            if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+                var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=True)
+                var_array = 1e9*var_array  # convert to ppbv
+                var_units = 'Mixing Ratio (ppbv)'
+            else:
+                var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+                var_units = 'concentration'
+            variable_fmt = Archive.aerosol_fmt_map[variable]
+        elif variable in Archive.gas_vars:
+            var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+            var_array = 1000*var_array # convert ppmv to ppbv
+            var_units = 'Mixing Ratio (ppbv)'
+            variable_fmt = Archive.gas_fmt_map[variable]
+        elif variable in Archive.wrf_vars:
+            var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+            var_units = 'concentration'
+
+        cs = ax.pcolormesh(var_array.T, norm=norm, edgecolor='face')
+
+        if i==0:
+            cbar = fig.colorbar(cs, ax=axs, orientation='horizontal', fraction=0.05, pad=0.15)
+            cbar_title = kwargs.get('cbar_title', f'{var_units}')
+            cbar.set_label(label=cbar_title, fontsize=11)
+            cbar.ax.tick_params(labelsize=11)
+
+        if kwargs.get("plot_contours"):
+            _plotContours(var_array, ax, **kwargs)
+
+        # Set x-axis ticks and labels   
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+        ax.set_xticks(xticks)
+        if i < 2:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xticklabels(xtick_labels)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=11)
+
+        # Set y-axis ticks and labels
+        ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
+        if i in [1,3]:
+            ax.set_yticklabels([])
+        else:
+            # Set y-axis ticks and label
+            ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+            ax.set_ylabel('z (km)', fontsize=11)
+
+        ax.tick_params(axis='both', which='major', labelsize=11)
+
+        title = labels[scenario]
+        ax.set_title(title, fontsize=11.5)
+
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-{variable}-four-scenarios.pdf', format='pdf', bbox_inches='tight')
+
+def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, convert_mixing_ratio=True, **kwargs):
+    
+    var_array = calculateVarZT(scenario, variable, convert_mixing_ratio)
     
     fig, ax  = plt.subplots(1,1, figsize=(12,5))
     if lognorm:
         norm = mplcolors.LogNorm(vmin, vmax)
     else:
         norm = None
-    cs = ax.pcolormesh(var_array.T, norm=norm)
+    cs = ax.pcolormesh(var_array.T, norm=norm,edgecolor='face')
 
-    if mixingratio:
+    if convert_mixing_ratio:
         var_units = 'mixing ratio'
     else:
         var_units = 'concentration'
@@ -143,20 +346,21 @@ def plotConcT(scenario, variable, zlevel, vmin=None, vmax=None, lognorm=False, m
     ax.set_xticklabels(xtick_labels)
     ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
 
-    ax.set_ylabel('z [km]', fontsize=12)
+    ax.set_ylabel('z (km)', fontsize=12)
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(title)
 
-def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwargs):
-    #var_array = calculateVarZT(scenario, variable, mixingratio)
+def plotScenariosVarsLevelConc(scenarios, variables, zlevel, convert_mixing_ratio, **kwargs):
+    #var_array = calculateVarZT(scenario, variable, convert_mixing_ratio)
     n_vars = len(variables)
     if not kwargs.get('ax'):
         fig, axs  = plt.subplots(n_vars,1, figsize=(kwargs.get('subplot_width', 12),n_vars*kwargs.get('subplot_height', 3)))
     else:
         axs = kwargs.get('ax')
     if kwargs.get('general_scenario_label'):
-        labels= Archive.getScenarioGeneralLabels()   
+        labels= Archive.getScenarioGeneralLabels()
+        colors = Archive.getScenarioGeneralColors()   
 
     if not isinstance(axs, np.ndarray):
         axs = np.array([axs])
@@ -165,7 +369,7 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
             times = np.arange(Archive.n_times)
             var_array = np.zeros((Archive.n_times))
             for itime in times:
-                if mixingratio:
+                if convert_mixing_ratio:
                     inverse_airdens = Archive.aero_data[scenario]['ALT'][itime, zlevel, :, :]
                     level_array = inverse_airdens*Archive.aero_data[scenario][variable][itime, zlevel, :, :]
                 else:
@@ -174,11 +378,14 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
 
             if kwargs.get('general_scenario_label'):
                 label = labels[scenario]
+                color = colors[scenario]
+                ax.plot(times, var_array, label = label, c=color)
             else:
                 label = scenario
-            ax.plot(times, var_array, label = label)
+                ax.plot(times, var_array, label = label)
+            
 
-        if mixingratio:
+        if convert_mixing_ratio:
             var_units = 'Mixing Ratio'
         else:
             var_units = 'Concentration'
@@ -212,19 +419,44 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio, **kwar
     plt.tight_layout()
 
 def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
-    #var_array = calculateVarZT(scenario, variable, mixingratio)
-    fig, axs  = plt.subplots(1,len(variables), figsize=(len(variables)*4,4.5))
+    #var_array = calculateVarZT(scenario, variable, convert_mixing_ratio)
+
+    if (len(variables) < 4):
+        fig, axs  = plt.subplots(1,len(variables), figsize=(len(variables)*4,4.5))
+
+    if (len(variables) == 4):
+        fig, axs  = plt.subplots(2, 2, figsize=(2*4,8.5))
+
+    if (len(variables) > 4) and (len(variables) < 7):
+        fig, axs  = plt.subplots(2, 3, figsize=(3*4,8.5))
+        if len(variables)<6:
+            axes_to_remove = 6-len(variables)
+            for i in range(axes_to_remove):
+                i+=1
+                axs[-1*i].remove()
 
     if kwargs.get('general_scenario_label'):
-        labels= Archive.getScenarioGeneralLabels()   
+        labels= Archive.getScenarioGeneralLabels()
+    if kwargs.get('use_standard_scenario_colors'):
+        colors = Archive.getScenarioColors()
+    else:
+        set1 = plt.get_cmap('Set1')
+        num_colors = set1.N # number of colors in the set1 colormap
+        colors = {}
+        # Extract colors and convert to hex
+        for i, scenario in enumerate(scenarios): # alternatively loop over range num_colors
+            rgba = set1(i)  # Get RGBA values
+            hex_color = mplcolors.to_hex(rgba)  # Convert RGBA to hex
+            colors[scenario] = hex_color
 
-    for ax, variable in zip(axs, variables):
+    for i, (ax, variable) in enumerate(zip(axs.flatten(), variables)):
         for scenario in scenarios:
             #times = np.arange(Archive.n_times)
             var_array = np.zeros((Archive.n_times))
             variable_fmt = variable
             if variable in Archive.aero_vars:
                 if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+                    # convert to mixing ratio
                     inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
                     array = 1e9*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
                     var_units = 'Mixing Ratio (ppbv)'
@@ -245,19 +477,24 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
                 label = labels[scenario]
             else:
                 label = scenario
-                
-            ax.plot(array_mean, np.arange(100), label=label)
+            
+            color = colors[scenario]
+            ax.plot(array_mean, np.arange(100), label=label, c=color)
             #if kwargs.get('plot_std'):
             #    array_std = array.std(axis=(1,2))
             #    ax.fill_betweenx(np.arange(100), array_mean-array_std, array_mean+array_std, alpha=.4)
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
-        ax.legend()
-        ax.set_xlabel(f'{var_units}', fontsize=12)
-        ax.set_ylabel('z [km]', fontsize=12)
+        if len(variables) > 1:
+            if i == 0:
+                fig.legend(fontsize=13, ncol=len(scenarios), loc='center', bbox_to_anchor=(.5,-.05))
+        else:
+            ax.legend(fontsize=12)
+        ax.set_xlabel(f'{var_units}', fontsize=13)
+        ax.set_ylabel('z (km)', fontsize=13)
         ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
         ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
-        ax.set_title(f'{variable_fmt}')
+        ax.set_title(f'{variable_fmt}', fontsize=14)
 
         ax.set_ylim(0, Archive.n_levels)
         if kwargs.get('grid', True):
@@ -269,8 +506,12 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
             ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
 
     delta_t = Archive.historydelta_m
-    plt.suptitle(f'Time: {delta_t*time} m')
+    plt.suptitle(kwargs.get('title', f'Time: {delta_t*time} m'))
     plt.tight_layout()
+
+    if kwargs.get("savefig"):
+        filename = kwargs.get('filename', f'vertical-profiles-time{time}.pdf')
+        plt.savefig(filename, format='pdf', bbox_inches='tight')
 
 def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None, **kwargs):
     
@@ -288,7 +529,7 @@ def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None, **kwargs):
     
     rel_diff = 100*(nsh_array_scenario - nsh_array_basecase)/nsh_array_basecase
     fig, ax  = plt.subplots(1,1, figsize=(12,5))
-    cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
+    cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
     cbar = fig.colorbar(cs, label='NSH percent difference')
 
     # Set x-axis ticks and label
@@ -299,18 +540,29 @@ def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None, **kwargs):
     ax.set_xticklabels(xtick_labels)
     ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
 
-    ax.set_ylabel('z [km]', fontsize=12)
+    ax.set_ylabel('z (km)', fontsize=12)
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
     ax.set_title(f'{scenario} NSH ({variable}) percent difference')
 
-def plotVarPercentDiff(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False, **kwargs):
+def plotVarPercentDiff(scenario, variable, vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
     
-    rel_diff = calculateVarPercentDiff(scenario, variable, mixingratio, skip_t0)
-    fig, ax  = plt.subplots(1,1, figsize=(12,5))
-    cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
+    rel_diff = calculateVarPercentDiff(scenario, variable, convert_mixing_ratio, skip_t0)
+    fig, ax  = plt.subplots(1,1, figsize=(12,4.5))
+    cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
     cbar = fig.colorbar(cs)
-    cbar.set_label(r'% difference', loc='center')
+    cbar_title = kwargs.get('cbar_title', '% difference')   
+    cbar.set_label(label=cbar_title, fontsize=13)
+    cbar.ax.tick_params(labelsize=12)
+
+    if kwargs.get("plot_contours"):
+        _plotContours(rel_diff, ax, **kwargs)
+
+    variable_fmt = variable
+    if variable in Archive.aero_vars:
+        variable_fmt = Archive.aerosol_fmt_map[variable]
+    if variable in Archive.gas_vars:
+        variable_fmt = Archive.gas_fmt_map[variable]
 
     # plot significance hatching
     if kwargs.get('plot_significance'):
@@ -322,24 +574,151 @@ def plotVarPercentDiff(scenario, variable, vmin=None, vmax=None, mixingratio=Fal
     xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels)
-    ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+    ax.set_xlabel(f'Time ({xtick_units})', fontsize=14)
 
-    ax.set_ylabel('z [km]', fontsize=12)
+    # Set y-axis ticks and label
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+    ax.set_ylabel('z (km)', fontsize=14)
+    ax.tick_params(axis='both', which='major', labelsize=13)
 
+    title = kwargs.get('title', f'{scenario} {variable_fmt} % difference ')
+    ax.set_title(title, fontsize=14)
 
-    if mixingratio:
-        mixingratio_str = 'mixing ratio '
-    else:
-        mixingratio_str = ''
-    ax.set_title(f'{scenario} {variable} {mixingratio_str}percent difference ')
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-pdiff-{variable}-{scenario}.pdf', format='pdf', bbox_inches='tight')
 
-def plotVarBias(scenario, variable, vmin=None, vmax=None, mixingratio=False, skip_t0=False, **kwargs):
+def plotFourPanelVarPercentDiff(scenarios, variable, vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
     
-    bias = calculateVarBias(scenario, variable, mixingratio, skip_t0)
+    fig, axs  = plt.subplots(2,2, figsize=(6.5,4.5))
+    plt.subplots_adjust(hspace=.3, wspace=.1)
+
+    if len(scenarios) != 4:
+        raise AttributeError("Number of scenarios must be four")
+    
+    labels= Archive.getScenarioGeneralLabels()
+
+    for i, (ax, scenario) in enumerate(zip(axs.flatten(), scenarios)):
+        rel_diff = calculateVarPercentDiff(scenario, variable, convert_mixing_ratio, skip_t0)
+        
+        cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
+
+        if i==0:
+            cbar = fig.colorbar(cs, ax=axs, orientation='horizontal', fraction=0.05, pad=0.15
+                                )
+
+            cbar_title = kwargs.get('cbar_title', '% difference')   
+            cbar.set_label(label=cbar_title, fontsize=11)
+            cbar.ax.tick_params(labelsize=11)
+
+        if kwargs.get("plot_contours"):
+            _plotContours(rel_diff, ax, **kwargs)
+
+        variable_fmt = variable
+        if variable in Archive.aero_vars:
+            variable_fmt = Archive.aerosol_fmt_map[variable]
+        if variable in Archive.gas_vars:
+            variable_fmt = Archive.gas_fmt_map[variable]
+
+        # plot significance hatching
+        if kwargs.get('plot_significance'):
+            _plotSignificance(rel_diff, ax, thres_n_std_dev=kwargs.get('signif_thres_n_std_dev', 5), skipzero=skip_t0)
+
+        # Set x-axis ticks and labels   
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+        ax.set_xticks(xticks)
+        if i < 2:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xticklabels(xtick_labels)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=11)
+
+        # Set y-axis ticks and labels
+        ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
+        if i in [1,3]:
+            ax.set_yticklabels([])
+        else:
+            # Set y-axis ticks and label
+            ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+            ax.set_ylabel('z (km)', fontsize=11)
+
+        ax.tick_params(axis='both', which='major', labelsize=11)
+
+        title = labels[scenario]
+        ax.set_title(title, fontsize=11.5)
+
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-{variable}-pdiff-four-scenarios.pdf', format='pdf', bbox_inches='tight')
+
+def plotCCNPercentDiff(scenario, vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
+    
+    fig, axs  = plt.subplots(2,2, figsize=(6.5,4.5))
+    plt.subplots_adjust(hspace=.3, wspace=.1)
+    ccn_vars = ['ccn_001', 'ccn_003', 'ccn_006', 'ccn_010']
+
+    for i, (ax, variable) in enumerate(zip(axs.flatten(), ccn_vars)):
+        rel_diff = calculateVarPercentDiff(scenario, variable, convert_mixing_ratio, skip_t0)
+        
+        cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
+
+        if i==0:
+            cbar = fig.colorbar(cs, ax=axs, orientation='horizontal', fraction=0.05, pad=0.15
+                                )
+
+            cbar_title = kwargs.get('cbar_title', '% difference')   
+            cbar.set_label(label=cbar_title, fontsize=11)
+            cbar.ax.tick_params(labelsize=11)
+
+        if kwargs.get("plot_contours"):
+            _plotContours(rel_diff, ax, **kwargs)
+
+        variable_fmt = variable
+        if variable in Archive.aero_vars:
+            variable_fmt = Archive.aerosol_fmt_map[variable]
+        if variable in Archive.gas_vars:
+            variable_fmt = Archive.gas_fmt_map[variable]
+
+        # plot significance hatching
+        if kwargs.get('plot_significance'):
+            _plotSignificance(rel_diff, ax, thres_n_std_dev=kwargs.get('signif_thres_n_std_dev', 5), skipzero=skip_t0)
+
+        # Set x-axis ticks and labels   
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+        ax.set_xticks(xticks)
+        if i < 2:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xticklabels(xtick_labels)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=11)
+
+        # Set y-axis ticks and labels
+        ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
+        if i in [1,3]:
+            ax.set_yticklabels([])
+        else:
+            # Set y-axis ticks and label
+            ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+            ax.set_ylabel('z (km)', fontsize=11)
+
+        ax.tick_params(axis='both', which='major', labelsize=11)
+
+        #title = kwargs.get('title', f'{scenario} {variable_fmt} % difference ')
+        ax.set_title(variable_fmt, fontsize=11.3)
+
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-ccn-pdiff-{scenario}.pdf', format='pdf', bbox_inches='tight')
+
+    
+
+def plotVarBias(scenario, variable, vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
+    
+    bias = calculateVarBias(scenario, variable, convert_mixing_ratio, skip_t0)
     fig, ax  = plt.subplots(1,1, figsize=(12,5))
-    cs = ax.pcolormesh(bias.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax)
+    cs = ax.pcolormesh(bias.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
     cbar = fig.colorbar(cs, label=f'{variable} bias')
 
     # Set x-axis ticks and label
@@ -350,11 +729,11 @@ def plotVarBias(scenario, variable, vmin=None, vmax=None, mixingratio=False, ski
     ax.set_xticklabels(xtick_labels)
     ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
 
-    ax.set_ylabel('z [km]', fontsize=12)
+    ax.set_ylabel('z (km)', fontsize=12)
     ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
     ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
 
-    if mixingratio:
+    if convert_mixing_ratio:
         mixingratio_str = 'mixing ratio '
     else:
         mixingratio_str = ''
