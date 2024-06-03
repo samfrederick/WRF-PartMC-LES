@@ -68,14 +68,14 @@ def calculateNSHTimeSlice(scenario, variable, store_result=True, **kwargs):
         Archive.nsh_dict[scenario][variable] = nsh_array
     return nsh_array
 
-def calculateVarZT(scenario, variable, mixingratio=True):
+def calculateVarZT(scenario, variable, convert_mixing_ratio=True):
     levels = np.arange(Archive.n_levels)
     times = np.arange(Archive.n_times)
 
     var_array = np.zeros((Archive.n_times, Archive.n_levels))
     for itime in times:
         for ilevel in levels:
-            if mixingratio:
+            if convert_mixing_ratio:
                 inverse_airdens = Archive.aero_data[scenario]['ALT'][itime, ilevel, :, :]
                 level_array = inverse_airdens*Archive.aero_data[scenario][variable][itime, ilevel, :, :]
             else:
@@ -83,9 +83,9 @@ def calculateVarZT(scenario, variable, mixingratio=True):
             var_array[itime, ilevel] = level_array.mean()
     return var_array
 
-def calculateVarPercentDiff(scenario, variable,  mixingratio=False, skip_t0=False):
-    array_scenario = calculateVarZT(scenario, variable, mixingratio)
-    array_basecase = calculateVarZT('uniform-basecase', variable, mixingratio)
+def calculateVarPercentDiff(scenario, variable,  convert_mixing_ratio=False, skip_t0=False):
+    array_scenario = calculateVarZT(scenario, variable, convert_mixing_ratio)
+    array_basecase = calculateVarZT('uniform-basecase', variable, convert_mixing_ratio)
 
     if skip_t0:
         array_scenario = array_scenario[1:]
@@ -94,9 +94,9 @@ def calculateVarPercentDiff(scenario, variable,  mixingratio=False, skip_t0=Fals
     rel_diff = 100*(array_scenario - array_basecase)/array_basecase
     return rel_diff
 
-def calculateVarBias(scenario, variable,  mixingratio=False, skip_t0=False):
-    array_scenario = calculateVarZT(scenario, variable, mixingratio)
-    array_basecase = calculateVarZT('uniform-basecase', variable, mixingratio)
+def calculateVarBias(scenario, variable,  convert_mixing_ratio=False, skip_t0=False):
+    array_scenario = calculateVarZT(scenario, variable, convert_mixing_ratio)
+    array_basecase = calculateVarZT('uniform-basecase', variable, convert_mixing_ratio)
 
     if skip_t0:
         array_scenario = array_scenario[1:]
@@ -142,7 +142,7 @@ def calculateBoxplotData(variable='ccn_001'):
         #scenario_nsh_values.append(scenario_nsh)
         #boxplot_positions.append(round(scenario_nsh, 2))
         #scenario_data = aerodata_dict[scenario_name]['aerodata']
-        var_pdiff = calculateVarPercentDiff(scenario=scenario_name, variable=variable, mixingratio=True)
+        var_pdiff = calculateVarPercentDiff(scenario=scenario_name, variable=variable, convert_mixing_ratio=True)
         var_pdiff = var_pdiff[18:36, :65] # previously time 24: (2hrs +)
         boxplot_vardata.append(var_pdiff.flatten())
     boxplot_data[variable] = boxplot_vardata    
