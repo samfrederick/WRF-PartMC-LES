@@ -71,7 +71,7 @@ class DataStruct:
     domain_x_cells = None
     domain_y_cells = None
     historydelta_m = None
-    gridsize = None
+    #gridsize = None
 
     def __init__(self):
         self._getFormatGasSpecies()
@@ -110,22 +110,31 @@ class DataStruct:
     
     def getScenarioSH(self, return_scaling=False):
         path = '/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/spatial-het'
-        filename = f'sh_patterns_xres{self.gridsize}_yres{self.gridsize}_exact.csv'
+        filename = f'sh_patterns_xres{self.domain_x_cells}_yres{self.domain_y_cells}_exact.csv'
         dataset = pd.read_csv(os.path.join(path, filename), index_col='scenario')
         scenario_list = self.getScenarioList()
         if not return_scaling:
             scenario_sh = {}
             for scenario in scenario_list:
-                scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
+                if 'no-nh4' in scenario:
+                    proxy_scenario = scenario.replace('-no-nh4', '')
+                    scenario_sh[scenario] = dataset.loc[proxy_scenario, 'NSH']
+                else:
+                    scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
             # sort by ascending SH (or scaling value)
             scenario_sh = {k:v for k, v in sorted(scenario_sh.items(), key=lambda item: item[1])}
             return scenario_sh
         scenario_sh = {}
         scaling_sh = {}
         for scenario in scenario_list:
-            scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
-            scaling_sh[scenario] = dataset.loc[scenario, 'scaling-factor']
-
+            if 'no-nh4' in scenario:
+                proxy_scenario = scenario.replace('-no-nh4', '')
+                scenario_sh[scenario] = dataset.loc[proxy_scenario, 'NSH']
+                scaling_sh[scenario] = dataset.loc[proxy_scenario, 'scaling-factor']
+            else:
+                scenario_sh[scenario] = dataset.loc[scenario, 'NSH']
+                scaling_sh[scenario] = dataset.loc[scenario, 'scaling-factor']
+            
         # sort by ascending SH (or scaling value)
         scenario_sh = {k:v for k, v in sorted(scenario_sh.items(), key=lambda item: item[1])}
         scaling_sh = {k:v for k, v in sorted(scaling_sh.items(), key=lambda item: item[1])}
@@ -158,6 +167,13 @@ class DataStruct:
             self.gas_fmt_map[var] = self._formatSpeciesSubscripts(var)
 
     def _getFormatAerosolSpecies(self):
+        ccn_vars = {'D_ALPHA': '$D_{\\alpha}$', 
+                    'D_GAMMA': '$D_{\gamma}$',  
+                    'CHI': '$\chi$', 
+                    'D_ALPHA_CCN': '$D_{\\alpha\mathrm{, CCN}}$',  
+                    'D_GAMMA_CCN': '$D_{\gamma\mathrm{, CCN}}$',  
+                    'CHI_CCN': '$\chi_{\mathrm{CCN}}$'
+                    }
         for var in self.aero_vars:
             if var.startswith('pmc_'):
                 var_temp = var.replace('pmc_', '')
@@ -174,18 +190,30 @@ class DataStruct:
                     var_fmt = f'{var_temp[0]} {var_temp[1].title()} ($S={supersat}\%$)'
                     self.aerosol_fmt_map[var] = var_fmt
                 else:
-                   self.aerosol_fmt_map[var] = var 
+                   self.aerosol_fmt_map[var] = var
+            elif var in ccn_vars:
+                self.aerosol_fmt_map[var] = ccn_vars[var]
             else:
                 self.aerosol_fmt_map[var] = var
     
     def getScenarioGeneralLabels(self):
         scenario_sh = self.getScenarioSH()
         scenario_labels = {}
-        for i, scenario in enumerate(scenario_sh.keys()):
+        i = 0
+        for scenario in scenario_sh.keys():
             if scenario == 'uniform-basecase':
                 scenario_labels[scenario] = 'Uniform base case'
+                i += 1
+            elif 'no-nh4' in scenario:
+                base_scenario = scenario.replace('-no-nh4', '')
+                try:
+                    base_scenario_general_label = scenario_labels[base_scenario]
+                except KeyError:
+                    print(f"No scenario {base_scenario} found - did you load the nh4 scenario and not the run with nh4?")
+                scenario_labels[scenario] = f'{base_scenario_general_label}, no NH$_4$'
             else:
                 scenario_labels[scenario] = f'Scenario {i}'
+                i += 1
         return scenario_labels
     
     def getScenarioColors(self):
