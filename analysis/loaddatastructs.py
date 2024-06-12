@@ -261,7 +261,7 @@ class GriddedOutputDataStruct(DataStruct):
     #nx = None
     #ny = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         # Assume default WRF-PartMC binning scheme (100 bins ranging from 1e-9 to 1e-3 m)
         self.bin_min= -9
         self.bin_max = -3
@@ -332,6 +332,16 @@ class GriddedOutputDataStruct(DataStruct):
                 # Retreive aerosol particle array indices for vertical level
                 start_idx, end_idx = self._getVertGridCellPartIndices(data, z_idx)
 
+                # Species attributes
+                # Aerosol species density
+                species_density = data['aero_density'][:]
+                # Aerosol species kappa
+                species_kappa = data['aero_kappa'][:]
+                # Aerosol species molecular weight
+                species_molec_weight = data['aero_molec_weight'][:]
+                # Number of ions after dissocation of aerosol species
+                species_num_ions = data['aero_num_ions'][:]
+
                 # Aerosol Diameters
                 particle_diameters = self._getParticleDiameters(data)
                 level_part_diams = particle_diameters[start_idx:end_idx]
@@ -362,7 +372,8 @@ class GriddedOutputDataStruct(DataStruct):
 
         crosssec_aero_masses = crosssec_aero_masses[:, 1:] # need to remove the first element since array of zeros used as placeholder 
 
-        return crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa
+        return (crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa, species_density,
+                species_kappa, species_molec_weight, species_num_ions)
     
     def loadData(self, scenario, xstart, xend, ystart, yend, z_idx, t_idx, verbose=True):
         slurmid = self.scenario_slurm_map[scenario]
@@ -378,13 +389,18 @@ class GriddedOutputDataStruct(DataStruct):
             crosssec_aero_numconc = crosssec_data['aero_numconc'][:]
             crosssec_aero_masses = crosssec_data['aero_masses'][:]
             crosssec_aero_kappa = crosssec_data['aero_kappa'][:]
+            crosssec_species_density = crosssec_data['species_density'][:]
+            crosssec_species_kappa = crosssec_data['species_kappa'][:]
+            crosssec_species_molec_weight = crosssec_data['species_molec_weight'][:]
+            crosssec_species_num_ions = crosssec_data['species_num_ions'][:] 
 
             crosssec_data.close()
         else:
             if verbose:
                 print('File does not exist, processing data')
             data_tuple = self.processCrossSection(output_subdir, xstart, xend, ystart, yend, z_idx, t_idx)
-            crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa = data_tuple
+            (crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses, crosssec_aero_kappa, crosssec_species_density,
+            crosssec_species_kappa, crosssec_species_molec_weight, crosssec_species_num_ions) = data_tuple
 
             history_dt = self.historydelta_m/60 # hours
             time =  (t_idx-1)*history_dt
@@ -401,12 +417,21 @@ class GriddedOutputDataStruct(DataStruct):
             aero_numconc = processed_data.createVariable('aero_numconc', 'f8', ('n_particles'))
             aero_masses = processed_data.createVariable('aero_masses', 'f8', ('n_species', 'n_particles'))
             aero_kappa = processed_data.createVariable('aero_kappa', 'f8', ('n_particles'))
+            species_density = processed_data.createVariable('species_density', 'f8', ('n_species'))
+            species_kappa = processed_data.createVariable('species_kappa', 'f8', ('n_species'))
+            species_molec_weight = processed_data.createVariable('species_molec_weight', 'f8', ('n_species'))
+            species_num_ions = processed_data.createVariable('species_num_ions', 'f8', ('n_species'))
             
             # variables
             aero_diams[:] = crosssec_aero_diams
             aero_numconc[:] = crosssec_aero_numconc
             aero_masses[:] = crosssec_aero_masses
             aero_kappa[:] = crosssec_aero_kappa
+            species_density[:] = crosssec_species_density
+            species_kappa[:] = crosssec_species_kappa
+            species_molec_weight[:] = crosssec_species_molec_weight
+            species_num_ions[:] = crosssec_species_num_ions
+
 
             processed_data.close()
         
@@ -424,6 +449,10 @@ class GriddedOutputDataStruct(DataStruct):
         self.gridded_data[scenario]['aero_numconc'] = crosssec_aero_numconc
         self.gridded_data[scenario]['aero_masses'] = crosssec_aero_masses
         self.gridded_data[scenario]['aero_kappa'] = crosssec_aero_kappa
+        self.gridded_data[scenario]['species_density'] = crosssec_species_density
+        self.gridded_data[scenario]['species_kappa'] = crosssec_species_kappa
+        self.gridded_data[scenario]['species_molec_weight'] = crosssec_species_molec_weight
+        self.gridded_data[scenario]['species_num_ions'] = crosssec_species_num_ions
         #return crosssec_aero_diams, crosssec_aero_numconc, crosssec_aero_masses
 
     
