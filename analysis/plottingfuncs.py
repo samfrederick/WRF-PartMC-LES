@@ -880,9 +880,11 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     times = kwargs.get('times', np.arange(0, Archive.n_times+1, int(Archive.n_times/(60/Archive.historydelta_m))))
     xlims = kwargs.get('xlims', (5e-9, 5e-6))
     if dist_type == 'num':
-        ylims = kwargs.get('ylims', (0, 10000))
+        ylims = kwargs.get('ylims', (1e7, 1e10))
+        scaling_factor = 1 # keep as # m^-3
     if dist_type == 'mass':
         ylims = kwargs.get('ylims', (0, 1e-13))
+        scaling_factor=1e9 # convert to micrograms per cubic meter
     yscale = kwargs.get('yscale', 'linear')
     savefig = kwargs.get('savefig', True)
     totconctimeidx=kwargs.get('totconctimeidx', Archive.n_times-1)
@@ -916,14 +918,15 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
 
         for bin_idx in range(100):
             bin_idx += 1 # 1 indexing 
-            bin_data = scenario_distdata[f'{dist_type}_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()/1e6
+            bin_data = scenario_distdata[f'{dist_type}_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()#/1e6
             if local_binning:
-                bin_data = scenario_distdata[f'{dist_type}_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data/1e6
+                bin_data = scenario_distdata[f'{dist_type}_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data#/1e6
                 bin_data = bin_data.mean()
             bin_vals.append(bin_data)
             x_vals.append(bin_idx)
 
-        ax.plot(scenario_distdata['BIN_CENTERS'][:].data[0], bin_vals, label=f'h {(1/60)*Archive.historydelta_m*time:1.0f}', c=c, lw=1.5)
+        ax.plot(scenario_distdata['BIN_CENTERS'][:].data[0], scaling_factor*np.array(bin_vals), 
+                label=f'h {(1/60)*Archive.historydelta_m*time:1.0f}', c=c, lw=1.5)
         ax.set_xscale('log')
 
     ax.set_xlim(xlims[0], xlims[1])
@@ -934,13 +937,13 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     ax.legend(loc=legend_loc, handlelength=1, ncol=legend_ncol, columnspacing=0.8)
 
     if dist_type == 'num':
-        ax.set_ylabel('Number concentration [m$^{-3}$]', fontsize=label_size)
+        ax.set_ylabel('Number concentration (m$^{-3}$)', fontsize=label_size)
         ax.set_title(f'Number distribution', fontsize=title_size)
     if dist_type == 'mass':
-        ax.set_ylabel('Mass concentration [m$^{-3}$]', fontsize=label_size)
+        ax.set_ylabel('Mass concentration ($\mu$g m$^{-3}$)', fontsize=label_size)
         ax.set_title(f'Mass distribution', fontsize=title_size)
 
-    ax.set_xlabel('Diameter [m]', fontsize=label_size)
+    ax.set_xlabel('Diameter (m)', fontsize=label_size)
 
     ax.grid(which = "major", linewidth = 1, axis='y', ls="dashed", dashes=(4,4), c='#414141', alpha=.5)
     ax.grid(which = "minor", linewidth = 1, axis='y', ls="dashed", dashes=(6,6), c='white')
@@ -967,6 +970,7 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
                 cmap=plt.cm.Spectral_r, norm=norm, zdir='z', offset=k)
     if local_binning:
 
+        # plot a semi-transparent rectangle around the region of local binning
         data = scenario_aerodata[tot_conc_label][totconctimeidx, k, :, :].data
         data[:] = np.nan
         data[j-local_binning:j+local_binning, i-local_binning:i+local_binning] = .1
@@ -974,6 +978,7 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
         ax.contourf(X, Y, data, 
                 cmap=plt.cm.Greys, zdir='z', vmin=0, vmax=1, offset=k, alpha=.5)
 
+        # plot a thin black boarder around the semi-transparent region
         width = 2
         data[j-local_binning-width:j-local_binning, i-local_binning-width:i+local_binning+width] = 1
         data[j+local_binning:j+local_binning+width, i-local_binning-width:i+local_binning+width] = 1
@@ -996,22 +1001,26 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     ax.set_ylabel('Y (km)')
     ax.set_zlabel('Z (km)')
 
+    xwidth = (nx*100) / 1000 # width of domain in km (assume standard cell width of 100 m)
+    ywidth = (ny*100) / 1000 # width of domain in km (assume standard cell width of 100 m)
+    zheight = 2 # height of domain in km (assume standard cell width of 100 m)
+
     ax.set_xticks(np.linspace(0, nx+1, 5))
-    ax.set_xticklabels(np.linspace(0, 4, 5).astype(int))
+    ax.set_xticklabels(np.linspace(0, xwidth, 5))
     ax.set_yticks(np.linspace(0, ny+1, 5))
-    ax.set_yticklabels(np.linspace(0, 4, 5).astype(int))
+    ax.set_yticklabels(np.linspace(0, ywidth, 5))
     ax.set_zticks(np.linspace(0, nz+1, 5))
-    ax.set_zticklabels(np.linspace(0, 2, 5))
+    ax.set_zticklabels(np.linspace(0, zheight, 5))
 
     if tot_conc_label == f'TOT_{dist_type.upper()}_CONC':
         if dist_type == 'num':
-            ax.set_title(f'Total number conc. (t = {Archive.historydelta_m*totconctimeidx} m)', y=1.17, 
+            ax.set_title(f'Total number conc. ($t = ${Archive.historydelta_m*totconctimeidx/60} h)', y=1.17, 
                         transform=ax.transAxes, fontsize=title_size)
         if dist_type == 'mass':
-            ax.set_title(f'Total mass conc. (t = {Archive.historydelta_m*totconctimeidx} m)', y=1.17, 
+            ax.set_title(f'Total mass conc. ($t = ${Archive.historydelta_m*totconctimeidx/60} h)', y=1.17, 
                         transform=ax.transAxes, fontsize=title_size)
     else:
-        ax.set_title(f'{tot_conc_title} (t = {Archive.historydelta_m*totconctimeidx} m)', y=1.17, 
+        ax.set_title(f'{tot_conc_title} ($t = ${Archive.historydelta_m*totconctimeidx/60} h)', y=1.17, 
                         transform=ax.transAxes, fontsize=title_size)
 
     N = 1.5  # some number > 1 that stretches z axis as you desire
@@ -1028,6 +1037,8 @@ def plotDistand3DCrossSec(scenario, i, j, k, dist_type, **kwargs):
     if savefig:
         plt.savefig(f'{scenario}_{dist_type}conc_i{i}_j{j}_k{k}.pdf', format='pdf', bbox_inches='tight')
     plt.show()
+
+    return bin_vals 
 """
 def plotCCNError(variable, absolute=False):
     if variable not in boxplot_data:
