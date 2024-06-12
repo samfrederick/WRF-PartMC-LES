@@ -132,6 +132,10 @@ def createICReference(job_path, aero_ics_path, set_zero_conc=False, domain_z_cel
         mass_frac_array[:, i] = np.array(mass_frac_list)
     vol_frac_array = np.zeros((n_aero_specs, n_aero_modes, n_levels))
     for i in range(n_levels):
+        # NOTE: IMPORTANT! This is INCORRECT - need to convert species mass fraction to volume fraction here
+        # Convert as vol_frac_array = (mass_fraction_array/species_density)/((mass_fraction_array/species_density).sum())
+        # where vol_frac_array is a (20,) array of volume fracs, species density is a (20,) array of species densities 
+        # and mass_fraction_array is a (20,) array of species mass fractions
         vol_frac_array[:, :, i] = mass_frac_array
     vol_frac[:] = vol_frac_array
 
