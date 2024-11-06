@@ -218,20 +218,40 @@ class DataStruct:
     
     def getScenarioColors(self):
         
-        scenario_colors = {"uniform-basecase": "",
+        scenario_colors_standard = {"uniform-basecase": "",
                            "fx2fy2": "", 
                            "fx1fy0": "", 
                            "road-10x": "", 
                            "point-source-10x10": "", 
-                           "point-source-1x1": ""}
+                           "point-source-1x1": "",
+                           }
+        scenario_list = list(scenario_colors_standard.keys())
         viridis = plt.get_cmap('viridis')
-        for i, scenario in zip(np.linspace(0.1, .9, len(scenario_colors.keys())), scenario_colors.keys()):
+        color_vals = np.linspace(0.1, .9, len(scenario_colors_standard.keys())) # just a fix
+        
+        # kind of hacky but working solution
+        scenario_colors = {"uniform-basecase": "",
+                           "uniform-basecase-no-nh4": "",
+                           "fx2fy2": "", 
+                           "fx1fy0": "", 
+                           "road-10x": "", 
+                           "point-source-10x10": "", 
+                           "point-source-1x1": "",
+                           "point-source-1x1-no-nh4": ""
+                           }
+        
+        for i, scenario in zip(color_vals, scenario_colors_standard.keys()):
             if scenario == 'uniform-basecase':
                 scenario_colors[scenario] = 'k'
+                scenario_colors['uniform-basecase-no-nh4'] = 'k'
             else:
                 rgba = viridis(i)
                 hex_color = mplcolors.to_hex(rgba)
                 scenario_colors[scenario] = hex_color
+                if scenario == 'point-source-1x1':
+                    rgba = viridis(i)
+                    hex_color = mplcolors.to_hex(rgba)
+                    scenario_colors['point-source-1x1-no-nh4'] = hex_color
 
         return scenario_colors
 
