@@ -11,12 +11,12 @@
 #SBATCH --mail-user=sf20@illinois.edu
 
 # Initial condition and emission profile parameters
-#scenario='uniform-basecase'
+scenario='uniform-basecase'
 #scenario='fx2fy2'
 #scenario='fx1fy0'
 #scenario='road-10x'
 #scenario='point-source-10x10'
-scenario='point-source-1x1'
+#scenario='point-source-1x1'
 
 # Emission rates for aerosols, gases
 EMISS_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les/emissions
@@ -30,6 +30,10 @@ aero_ic_data_path=$IC_PATH/urbanplume_aero_ics.json
 gas_ic_data_path=$IC_PATH/urbanplume_gas_ics.csv
 #aero_ic_data_path=$IC_PATH/urbanplume_aero_ics_no-ammonium.json # SF 4/23/24: Run scenario with no initial ammonium in aerosol
 #gas_ic_data_path=$IC_PATH/urbanplume_gas_ics_no-ammonia.csv # SF 4/23/24: Run scenario with no initial ammonia gas conc
+
+# Sounding 
+SOUNDING_FILE=input_sounding_base
+#SOUNDING_FILE=input_sounding_meanwind
 
 # Path to WRF-LES simulation
 SIM_PATH=/data/keeling/a/sf20/b/wrf-partmc-spatial-het/WRFV3/test/em_les
@@ -47,7 +51,7 @@ cp $SIM_PATH/partmc-files/aero_data.dat $OUTPUT_PATH/aero_data.dat
 cp $SIM_PATH/partmc-files/gas_data.dat $OUTPUT_PATH/gas_data.dat
 cp $SIM_PATH/partmc-files/gas_params.csv $OUTPUT_PATH/gas_params.csv
 cp $SIM_PATH/ideal.exe $OUTPUT_PATH/ideal.exe
-cp $SIM_PATH/input_sounding $OUTPUT_PATH/input_sounding
+cp $SIM_PATH/namelists-and-soundings/$SOUNDING_FILE $OUTPUT_PATH/input_sounding
 cp $SIM_PATH/LANDUSE.TBL $OUTPUT_PATH/LANDUSE.TBL
 cp $SIM_PATH/namelist.input $OUTPUT_PATH/namelist.input
 cp $SIM_PATH/wrf.exe $OUTPUT_PATH/wrf.exe
