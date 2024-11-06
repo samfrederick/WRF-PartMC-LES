@@ -1,6 +1,6 @@
 from loaddatastructs import *
 import numpy as np
-from mcnsh import mcnormspatialhet
+from nsh import montecarlospatialhet
 from nsh import normalizedspatialhet
 
 
@@ -22,7 +22,7 @@ def createEmissionsNSHDict():
         scenario_arr = np.genfromtxt(array_path, delimiter=',')
         scaling_factor = basecase_arr.sum() / scenario_arr.sum()
         scenario_arr = scaling_factor*scenario_arr
-        #arr_nsh = mcnormspatialhet(scenario_arr, n_permutes=100000)
+        #arr_nsh = montecarlospatialhet(scenario_arr, n_permutes=100000)
         arr_nsh = normalizedspatialhet(scenario_arr)
         emissions_nsh_dict[scenario] = arr_nsh
         #print(f'{scenario}, scaling factor = {scaling_factor}, NSH = {arr_nsh:4.3f}')
@@ -61,7 +61,7 @@ def calculateNSHTimeSlice(scenario, variable, store_result=True, **kwargs):
     for t_idx, itime in enumerate(times):
         for l_idx, ilevel in enumerate(levels):
             level_array = scenario_aerodata[variable][itime, ilevel, :, :]
-            nsh_estimate = mcnormspatialhet(level_array, n_permutes=10000)
+            nsh_estimate = montecarlospatialhet(level_array, n_permutes=10000)
             nsh_array[t_idx, l_idx] = nsh_estimate
     
     if store_result:
