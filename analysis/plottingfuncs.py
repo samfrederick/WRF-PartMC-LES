@@ -727,7 +727,77 @@ def plotCCNPercentDiff(scenario, vmin=None, vmax=None, convert_mixing_ratio=Fals
     if kwargs.get("savefig"):
         plt.savefig(f'height-time-ccn-pdiff-{scenario}.pdf', format='pdf', bbox_inches='tight')
 
-    
+
+def plotMultiScenarioCCNPercentDiff(vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
+
+    fig_xsize = kwargs.get('fig_xsize', 7)
+    fig_ysize = kwargs.get('fig_ysize', 3)
+    fig, axs  = plt.subplots(4,3, figsize=(fig_xsize, fig_ysize), sharex=True, sharey=True, layout='constrained')
+
+    global_fontsize = kwargs.get('global_fontsize', 9)
+
+    general_scenario_labels = Archive.getScenarioGeneralLabels()
+
+    vars = ['ccn_001', 'ccn_003', 'ccn_006', 'ccn_010']
+    scenarios = ['fx1fy0', 'road-10x', 'point-source-1x1']*4
+    for i, (scenario, ax) in enumerate(zip(scenarios, axs.flatten())):
+        if i % 3 == 0:
+            variable = vars[i//3]
+        
+        rel_diff = calculateVarPercentDiff(scenario, variable, convert_mixing_ratio, skip_t0)
+
+        cs = ax.pcolormesh(rel_diff.T, cmap=plt.cm.coolwarm, vmin=vmin, vmax=vmax,edgecolor='face')
+
+        if i==0:
+            cbar = fig.colorbar(cs, ax=axs, orientation='horizontal', fraction=0.04, pad=0.05
+                                )
+
+            cbar_title = kwargs.get('cbar_title', '% difference')   
+            cbar.set_label(label=cbar_title, fontsize=global_fontsize)
+            cbar.ax.tick_params(labelsize=global_fontsize)
+
+        if kwargs.get("plot_contours"):
+            _plotContours(rel_diff, ax, **kwargs)
+
+        variable_fmt = variable
+        if variable in Archive.aero_vars:
+            variable_fmt = Archive.aerosol_fmt_map[variable]
+        if variable in Archive.gas_vars:
+            variable_fmt = Archive.gas_fmt_map[variable]
+
+        # plot significance hatching
+        if kwargs.get('plot_significance'):
+            _plotSignificance(rel_diff, ax, thres_n_std_dev=kwargs.get('signif_thres_n_std_dev', 5), skipzero=skip_t0)
+
+        # Set x-axis ticks and labels   
+        xtick_units = kwargs.get('xtick_units', 'm') 
+        xtick_delta = kwargs.get('xtick_delta_t', 30)
+        xticks, xtick_labels = _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=True)
+        ax.set_xticks(xticks)
+        if i < 9:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xticklabels(xtick_labels)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=global_fontsize)
+
+        # Set y-axis ticks and labels
+        ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
+        ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+        if i%3 == 0:
+            ax.set_ylabel('z (km)', fontsize=global_fontsize)
+
+            # add text 
+            label = _createSuperSatLabel(variable)
+            ax.text(x=-.6, y=.5, s=label, transform=ax.transAxes)
+
+        ax.tick_params(axis='both', which='major', labelsize=global_fontsize)
+
+        if i < 3:
+            ax.set_title(general_scenario_labels[scenario], fontsize=global_fontsize)
+
+    if kwargs.get("savefig"):
+        plt.savefig(f'height-time-ccn-pdiff-multi-scenario.pdf', format='pdf', bbox_inches='tight')
+
 
 def plotVarBias(scenario, variable, vmin=None, vmax=None, convert_mixing_ratio=False, skip_t0=False, **kwargs):
     
