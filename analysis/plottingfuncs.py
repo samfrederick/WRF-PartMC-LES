@@ -57,7 +57,7 @@ def _plotContours(ZT_data, ax, **kwargs):
     contour_smoothing = kwargs.get('smooth_contours', False)
     smoothing_sigma = kwargs.get('contour_smoothing_sigma', 0.7)
     contour_linewidth = kwargs.get('contour_linewidth', 1.5)
-    contour_label_fontsize = kwargs.get('contour_label_fontsize', 13)
+    contour_label_fontsize = kwargs.get('contour_label_fontsize', 9)
     contourmax = kwargs.get('contour_max', 15)
     contourmin = kwargs.get('contour_min', -15)
     ncontours = kwargs.get('n_contours', 9)
@@ -116,9 +116,14 @@ def plotNSH(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
     ax.set_title(f'{scenario}, NSH ({variable})')
 
 def plotMultipleNSH(scenario, variables, vmin=0, vmax=1, **kwargs):
-    fig, axs  = plt.subplots(len(variables),1, figsize=kwargs.get('figsize', (12, 5)))
+    fig, axs  = plt.subplots(len(variables),1, figsize=kwargs.get('figsize', (6.5, 2.71)))
 
-    if ((vmin != None) and (vmax != None)):
+    axis_label_fontsize=10
+    tick_label_fontsize=9
+
+    if kwargs.get('lognorm', False):
+        norm = mplcolors.LogNorm(vmin, vmax)
+    elif ((vmin != None) and (vmax != None)):
         norm = mplcolors.Normalize(vmin, vmax)
     else:
         norm = None
@@ -139,7 +144,7 @@ def plotMultipleNSH(scenario, variables, vmin=0, vmax=1, **kwargs):
         cs = ax.pcolormesh(nsh_array.T, norm=norm,edgecolor='face')
 
 
-        ax.set_ylabel('z (km)', fontsize=12)
+        ax.set_ylabel('z (km)', fontsize=axis_label_fontsize)
 
         # Set x-axis ticks and label
         xtick_units = kwargs.get('xtick_units', 'm') 
@@ -149,13 +154,13 @@ def plotMultipleNSH(scenario, variables, vmin=0, vmax=1, **kwargs):
             ax.set_xticks([])
         else:
             ax.set_xticks(xticks)
-            ax.set_xticklabels(xtick_labels)
-            ax.set_xlabel(f'Time ({xtick_units})', fontsize=12)
+            ax.set_xticklabels(xtick_labels, fontsize=tick_label_fontsize)
+            ax.set_xlabel(f'Time ({xtick_units})', fontsize=axis_label_fontsize)
 
         ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
-        ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
+        ax.set_yticklabels(np.linspace(0, 2, 5).round(2), fontsize=tick_label_fontsize)
         #ax.set_title(f'$SH$, {variable_fmt}')
-        ax.text(-.2, 0.5, f'{variable_fmt}', ha='center', transform=ax.transAxes, fontsize=12)
+        ax.text(-.2, 0.5, f'{variable_fmt}', ha='center', transform=ax.transAxes, fontsize=axis_label_fontsize)
 
         if nsh_array.max() > 0.5:
             contourmax = 1
@@ -186,7 +191,8 @@ def plotMultipleNSH(scenario, variables, vmin=0, vmax=1, **kwargs):
     
     fig.subplots_adjust(right=0.82)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-    fig.colorbar(cs, cax=cbar_ax, label='$SH$')
+    cbar = fig.colorbar(cs, cax=cbar_ax, label='$SH$')
+    cbar.set_label('$SH$', fontsize=10)
 
     if kwargs.get("savefig"):
         plt.savefig(f'height-time-nsh-multivar-{scenario}.pdf', format='pdf', bbox_inches='tight')
@@ -435,15 +441,21 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, convert_mixing_rati
 
 def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
     #var_array = calculateVarZT(scenario, variable, convert_mixing_ratio)
-
+    global_fontsize = kwargs.get('global_fontsize', 13)
     if (len(variables) < 4):
-        fig, axs  = plt.subplots(1,len(variables), figsize=(len(variables)*4,4.5))
+        fig_xsize = kwargs.get('fig_xsize', len(variables)*4)
+        fig_ysize = kwargs.get('fig_ysize', 4.5)
+        fig, axs  = plt.subplots(1,len(variables), figsize=(fig_xsize,fig_ysize))
 
     if (len(variables) == 4):
-        fig, axs  = plt.subplots(2, 2, figsize=(2*4,8.5))
+        fig_xsize = kwargs.get('fig_xsize', 2*4)
+        fig_ysize = kwargs.get('fig_ysize', 8.5)
+        fig, axs  = plt.subplots(2, 2, figsize=(fig_xsize,fig_ysize))
 
     if (len(variables) > 4) and (len(variables) < 7):
-        fig, axs  = plt.subplots(2, 3, figsize=(3*4,8.5))
+        fig_xsize = kwargs.get('fig_xsize', 3*4)
+        fig_ysize = kwargs.get('fig_ysize', 8.5)
+        fig, axs  = plt.subplots(2, 3, figsize=(fig_xsize,fig_ysize))
         if len(variables)<6:
             axes_to_remove = 6-len(variables)
             for i in range(axes_to_remove):
@@ -491,6 +503,7 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
                     inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
                     array = 1e9*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
                     var_units = 'Mixing Ratio (ppbv)'
+
                 else:
                     array = Archive.aero_data[scenario][variable][time, :, :, :]
                     var_units = ''
@@ -510,30 +523,35 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
                 label = scenario
             
             color = colors[scenario]
-            ax.plot(array_mean, np.arange(100), label=label, c=color)
+            ls = '-'
+            if 'no-nh4' in scenario:
+                ls = '--'
+            ax.plot(array_mean, np.arange(100), label=label, c=color, ls=ls)
             #if kwargs.get('plot_std'):
             #    array_std = array.std(axis=(1,2))
             #    ax.fill_betweenx(np.arange(100), array_mean-array_std, array_mean+array_std, alpha=.4)
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
+        legend_cols = kwargs.get('legend_ncols', len(scenarios))
         if len(variables) > 1:
             if i == 0:
-                fig.legend(fontsize=13, ncol=len(scenarios), loc='center', bbox_to_anchor=(.5,-.05))
+                fig.legend(fontsize=global_fontsize, ncol=legend_cols, loc='center', bbox_to_anchor=(.5,-.05))
         else:
-            ax.legend(fontsize=12)
-        ax.set_xlabel(f'{var_units}', fontsize=13)
-        ax.set_ylabel('z (km)', fontsize=13)
+            ax.legend(fontsize=global_fontsize)
+        ax.set_xlabel(f'{var_units}', fontsize=global_fontsize)
+        ax.set_ylabel('z (km)', fontsize=global_fontsize)
         ax.set_yticks(np.arange(0, Archive.n_levels+1, 25))
         ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
-        ax.set_title(f'{variable_fmt}', fontsize=14)
+        ax.set_title(f'{variable_fmt}', fontsize=global_fontsize)
 
         ax.set_ylim(0, Archive.n_levels)
         if kwargs.get('grid', True):
-            ax.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='#414141', alpha=.5)
-            ax.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white')
-            ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
-            ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
-            ax.tick_params(axis='both', labelsize=13, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+            lw = kwargs.get('grid_linewidth', 1)
+            ax.grid(which = "major", linewidth = lw, axis='y', ls="dotted", dashes=(.5,6), c='#414141', alpha=.5)
+            ax.grid(which = "minor", linewidth = lw, axis='y', ls="dotted", dashes=(.5,6), c='white')
+            ax.grid(which = "minor", linewidth = lw, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.grid(which = "major", linewidth = lw, axis='x', ls="dotted", dashes=(.5,6), c='#414141')
+            ax.tick_params(axis='both', labelsize=global_fontsize, which='major', direction='in', top=True, right=True, bottom=True, left=True)
             ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
 
     delta_t = Archive.historydelta_m
@@ -869,9 +887,9 @@ def plotNumberDist(scenario, i, j, k, **kwargs):
         bin_width = bin_edges[1:] - bin_edges[:-1]
         for bin_idx in range(100):
             bin_idx += 1 # 1 indexing 
-            bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()/1e6
+            bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()#/1e6
             if local_binning:
-                bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data/1e6
+                bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data#/1e6
                 bin_data = bin_data.mean()
             bin_vals.append(bin_data)
             x_vals.append(bin_idx)
@@ -933,9 +951,9 @@ def plotNumberDists(scenarios, i, j, k, time, **kwargs):
         bin_width = bin_edges[1:] - bin_edges[:-1]
         for bin_idx in range(100):
             bin_idx += 1 # 1 indexing 
-            bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()/1e6
+            bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j, i].data.item()#/1e6
             if local_binning:
-                bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data/1e6
+                bin_data = scenario_distdata[f'num_a{str(bin_idx).zfill(3)}'][time, k, j-local_binning:j+local_binning, i-local_binning:i+local_binning].data#/1e6
                 bin_data = bin_data.mean()
             bin_vals.append(bin_data)
             x_vals.append(bin_idx)
