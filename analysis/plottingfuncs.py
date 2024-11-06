@@ -470,7 +470,23 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
             var_array = np.zeros((Archive.n_times))
             variable_fmt = variable
             if variable in Archive.aero_vars:
-                if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+                if variable.startswith('ccn') or 'NUM_CONC' in variable:
+                    # number concentration to number per kg of air
+                    inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
+                    array = inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
+                    var_units = '# kg$^{-1}$'
+                    if kwargs.get('unit_prefactor'):
+                        unit_prefactor = kwargs.get('unit_prefactor')
+                        array = unit_prefactor*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
+                        unit_prefactor_str = f'{1/unit_prefactor:1.0e}'
+                        components = unit_prefactor_str.split('e')
+                        signif = components[0]
+                        expon = components[1].replace('+', '').lstrip("0")
+                        fmt_unit_prefac = '$' + signif + '\\times' + '10^{' + expon + '}' + '$'
+
+                        var_units = '(# kg$^{-1}$)$/$' + fmt_unit_prefac
+
+                elif variable.startswith('pmc'):
                     # convert to mixing ratio
                     inverse_airdens = Archive.aero_data[scenario]['ALT'][time, :, :, :]
                     array = 1e9*inverse_airdens*Archive.aero_data[scenario][variable][time, :, :, :]
