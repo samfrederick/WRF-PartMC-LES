@@ -31,6 +31,11 @@ def _getXTickTimes(xtick_units, xtick_delta, shift_tickloc=False):
 
     return xticks, xtick_labels
 
+def _createSuperSatLabel(variable):
+    supersat = int(variable.split('_')[1])/10
+    label = f'$S = {supersat}\%$'
+    return label
+
 def _plotSignificance(rel_diff, ax, thres_n_std_dev=5, skipzero=False):
 
     # get relative difference values during the first hour when the scenario matches up with the basecase
