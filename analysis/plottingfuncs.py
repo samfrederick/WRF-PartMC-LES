@@ -201,7 +201,12 @@ def plotZT(scenario, variable, vmin=None, vmax=None, lognorm=False, **kwargs):
 
     variable_fmt = variable
     if variable in Archive.aero_vars:
-        if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+        if variable.startswith('ccn') or 'NUM_CONC' in variable:
+            # number concentration to number per kg of air
+            var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+            var_units = '# kg$^{-1}$'
+        elif variable.startswith('pmc'):
+            # convert to mixing ratio
             var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=True)
             var_array = 1e9*var_array  # convert to ppbv
             var_units = 'Mixing Ratio (ppbv)'
@@ -267,7 +272,12 @@ def plotFourPanelZT(scenarios, variable, vmin=None, vmax=None, lognorm=False, **
 
         variable_fmt = variable
         if variable in Archive.aero_vars:
-            if variable.startswith('pmc') or variable.startswith('ccn') or 'NUM_CONC' in variable:
+            if variable.startswith('ccn') or 'NUM_CONC' in variable:
+                # number concentration to number per kg of air
+                var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=False)
+                var_units = '# kg$^{-1}$'
+            elif variable.startswith('pmc'):
+                # convert to mixing ratio
                 var_array = calculateVarZT(scenario, variable, convert_mixing_ratio=True)
                 var_array = 1e9*var_array  # convert to ppbv
                 var_units = 'Mixing Ratio (ppbv)'
