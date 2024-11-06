@@ -43,6 +43,8 @@ urban_plume_aero_ics = {'aitken_mode': {'number_conc [m^-3]': 3.2e9, # 3200 per 
                                          },
                         }
 """
+def mass_frac_to_volume_frac(mass_frac, species_density):
+    return (mass_frac/species_density)/((mass_frac/species_density).sum())
 
 def createICReference(job_path, aero_ics_path, set_zero_conc=False, domain_z_cells=None, ic_scaling=1.0):
 
@@ -53,6 +55,10 @@ def createICReference(job_path, aero_ics_path, set_zero_conc=False, domain_z_cel
     
     with open(aero_ics_path, 'r') as infile:    
         urban_plume_aero_ics = json.load(infile)
+
+    with open(os.path.join(os.path.dirname(aero_ics_path), 'species-densities.json'), 'r') as infile:
+        species_density = json.load(infile)
+        species_density = np.array(list(species_density.values()))
     
     file_path = f'{job_path}/ics/ic_{file_prefix}_reference.nc'
     ncfile = nc.Dataset(file_path, 'w')
@@ -131,12 +137,18 @@ def createICReference(job_path, aero_ics_path, set_zero_conc=False, domain_z_cel
         mass_frac_list = list(mass_fracs.values())
         mass_frac_array[:, i] = np.array(mass_frac_list)
     vol_frac_array = np.zeros((n_aero_specs, n_aero_modes, n_levels))
+    """
     for i in range(n_levels):
         # NOTE: IMPORTANT! This is INCORRECT - need to convert species mass fraction to volume fraction here
         # Convert as vol_frac_array = (mass_fraction_array/species_density)/((mass_fraction_array/species_density).sum())
         # where vol_frac_array is a (20,) array of volume fracs, species density is a (20,) array of species densities 
         # and mass_fraction_array is a (20,) array of species mass fractions
+        #vol_frac_array = (mass_frac_array/species_density)/((mass_frac_array/species_density).sum())
         vol_frac_array[:, :, i] = mass_frac_array
+    """
+    for i in range(n_levels):
+        for j in range(n_aero_modes):
+            vol_frac_array[:,j,i] = mass_frac_to_volume_frac(mass_frac_array[:,j], species_density)
     vol_frac[:] = vol_frac_array
 
     vol_frac_std = ncfile.createVariable('vol_frac_std', 'f8', ('n_aero_specs', 'n_aero_modes', 'nz'))
