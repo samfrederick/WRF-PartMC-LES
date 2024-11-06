@@ -5,6 +5,23 @@ from loaddatastructs import * # use GriddedOutput data object
 from griddedoutput_helperfuncs import *
 plt.rcParams['axes.prop_cycle'] = cycler('color', plt.get_cmap('tab20').colors)
 
+def _timeLabel(t_idx, ax, **kwargs):
+    time = int((t_idx - 1)*GriddedOutput.historydelta_m/60)
+
+    fontsize=kwargs.get('subplot_title_fontsize', 12)
+    
+    if time == 0:
+        time_text = 'Initial condition'
+    else:
+        time_text = f'{time} hours'
+
+    txt = AnchoredText(f'{time_text}',
+                    loc='lower left', prop=dict(size=fontsize), frameon=True,
+                    bbox_to_anchor=(0., 1.), borderpad=0, pad=0.25,
+                    bbox_transform=ax.transAxes
+                    )
+    ax.add_artist(txt)
+
 def plotNumberDist(number_dist_arr, plot_type='hist', **kwargs):
     if not kwargs.get('ax'):
         fig, ax = plt.subplots(1, 1, figsize=(8,6))
