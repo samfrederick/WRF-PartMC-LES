@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from cycler import cycler
+from matplotlib.offsetbox import AnchoredText
 #from griddedoutput_loaddatasets import *
 from loaddatastructs import * # use GriddedOutput data object
 from griddedoutput_helperfuncs import *
@@ -54,7 +55,7 @@ def plotNumberDist(number_dist_arr, plot_type='hist', **kwargs):
     ax.grid(which = "minor", linewidth = 0.2)
     ax.minorticks_on()
     ax.set_ylabel('$dN/d\log{D_p}$')
-    ax.set_xlabel('Particle Diameter [m]')
+    ax.set_xlabel('Particle Diameter (m)')
     leg_fontsize = kwargs.get('legend_fontsize', 10)
 
     ax.legend(fontsize=leg_fontsize)
@@ -86,7 +87,7 @@ def plotSpeciatedMassDist(binned_species_mass_arr, **kwargs):
     plt.xscale('log')
     plt.yscale(kwargs.get('yscale', 'log'))
     plt.ylabel('Mass [kg$\cdot$m$^{-3}$]')
-    plt.xlabel('Particle Diameter [m]')
+    plt.xlabel('Particle Diameter (m)')
     if kwargs.get('xlims'):
         plt.xlim(kwargs.get('xlims'))
     plt.legend(loc='center', bbox_to_anchor=(1.3, .5), ncol=2)
@@ -124,7 +125,7 @@ def plotSpeciatedMassFrac(binned_species_mass_arr, **kwargs):
     plt.ylim(0, 1)
     plt.xscale('log')
     plt.ylabel('Mass Fraction')
-    plt.xlabel('Particle Diameter [m]')
+    plt.xlabel('Particle Diameter (m)')
     if kwargs.get('xlims'):
         plt.xlim(kwargs.get('xlims'))
     plt.legend(loc='center', bbox_to_anchor=(1.3, .5), ncol=2)
@@ -213,7 +214,7 @@ def plotFourPanelMassFrac(scenario, times, xstart, xend, ystart, yend, z_idx, **
         if j < 2:
             ax.set_xticklabels([])
         else:
-            ax.set_xlabel('Particle Diameter [m]', fontsize=11)
+            ax.set_xlabel('Particle Diameter (m)', fontsize=11)
 
         # Set y-axis ticks and labels
         if j in [1,3]:
@@ -225,9 +226,11 @@ def plotFourPanelMassFrac(scenario, times, xstart, xend, ystart, yend, z_idx, **
         ax.tick_params(axis='both', which='major', labelsize=11)
 
         # add subplot title (time)
-        history_dt = GriddedOutput.historydelta_m/60 # hours
-        time =  ((t-1)*history_dt)
-        ax.set_title(f'$t = {time:3.0f}$ h', fontsize=11.5)
+        #history_dt = GriddedOutput.historydelta_m/60 # hours
+        #time =  ((t-1)*history_dt)
+        #ax.set_title(f'$t = {time:3.0f}$ h', fontsize=11.5)
+
+        _timeLabel(t, ax, **kwargs)
 
     if kwargs.get("savefig"):
         plt.savefig(f'speciated-mass-frac-four-panel-{scenario}-z{z_idx}.pdf', format='pdf', bbox_inches='tight')
