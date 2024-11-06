@@ -231,3 +231,182 @@ def plotFourPanelMassFrac(scenario, times, xstart, xend, ystart, yend, z_idx, **
 
     if kwargs.get("savefig"):
         plt.savefig(f'speciated-mass-frac-four-panel-{scenario}-z{z_idx}.pdf', format='pdf', bbox_inches='tight')
+
+def plotScenarios2DKappaDists(scenarios, xstart, xend, ystart, yend, z_idx, t_idx):
+    general_labels = {'uniform-basecase': 'Uniform base case', 
+                        'point-source-1x1': 'Scenario 3'}
+
+    # plot from kappa=(0,1) and diameters=(1e-8, 1e-6), weight by the number conc. of each computation particle. 
+    fig, axs = plt.subplots(1,2, figsize=(8, 4))
+    plt.subplots_adjust(wspace=.15)
+
+    for i, (ax, scenario) in enumerate(zip(axs.flatten(), scenarios)):
+        GriddedOutput.loadData(scenario, xstart, xend, ystart, yend, z_idx, t_idx)
+
+        # 1-d arrays with per-particle attributes
+        kappa = GriddedOutput.gridded_data[scenario]['aero_kappa']
+        diams = GriddedOutput.gridded_data[scenario]['aero_diams']
+        numconc = GriddedOutput.gridded_data[scenario]['aero_numconc']
+        n_cells = GriddedOutput.gridded_data[scenario]['n_total_cells']
+
+        diam_bins = np.logspace(-8, -6, 50)
+        #diam_bins = GriddedOutput.bin_edges
+        kappa_bins = np.linspace(0, 1, 51)
+        diam_logwidth = (np.log10(diam_bins[1:]) - np.log10(diam_bins[0:-1]))[0]
+        kappa_width = (kappa_bins[1:] - kappa_bins[0:-1])[0]
+        hist, xedges, yedges, cs = ax.hist2d(diams, kappa, bins=[diam_bins, kappa_bins], weights=numconc/(diam_logwidth*n_cells), 
+                                            density=False, cmin=1,edgecolor='face', linewidth=.1, zorder=10)
+        ax.set_xscale('log')
+
+        if i != 0:
+            ax.set_yticklabels([])
+        else:
+            ax.set_ylabel('$\kappa$', fontsize=12)
+
+        ax.set_xlabel('Particle diameter (m)', fontsize=12)
+        
+        ax.set_title(f'{general_labels[scenario]}')
+        #ax.set_title(f'{scenario}')
+
+        ax.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,3), c='#414141', alpha=.5, zorder=0)
+        ax.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white', zorder=0)
+        ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,3), c='#414141', zorder=0)
+        ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141', zorder=0)
+        ax.tick_params(axis='both', labelsize=10, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+        ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
+    cbar = fig.colorbar(cs, ax=axs, orientation='horizontal', fraction=0.05, pad=0.2)
+    cbar_title = 'Number conc. (m$^{-3}$)'
+    cbar.set_label(label=cbar_title, fontsize=12)
+    cbar.ax.tick_params(labelsize=11)
+    plt.savefig(f'2d-kappa-dist-two-panel-z{z_idx}-t{t_idx}.pdf', format='pdf', bbox_inches='tight')
+    #plt.close()
+
+def plotScenario2DKappaDist4Panel(scenario, xstart, xend, ystart, yend, z_idx):
+    # plot from kappa=(0,1) and diameters=(1e-8, 1e-6), weight by the number conc. of each computation particle. 
+    fig, axs = plt.subplots(2,2, figsize=(8, 5))
+    plt.subplots_adjust(wspace=.15)
+
+    for i, (ax, t_idx) in enumerate(zip(axs.flatten(), np.arange(1, 38, 12))): # every other hour (note using 1-indexing here)
+
+
+        GriddedOutput.loadData(scenario, xstart, xend, ystart, yend, z_idx, t_idx)
+
+        # 1-d arrays with per-particle attributes
+        kappa = GriddedOutput.gridded_data[scenario]['aero_kappa']
+        diams = GriddedOutput.gridded_data[scenario]['aero_diams']
+        numconc = GriddedOutput.gridded_data[scenario]['aero_numconc']
+        n_cells = GriddedOutput.gridded_data[scenario]['n_total_cells']
+
+        diam_bins = np.logspace(-8, -6, 50)
+        #diam_bins = GriddedOutput.bin_edges
+        kappa_bins = np.linspace(0, 1, 51)
+        diam_logwidth = (np.log10(diam_bins[1:]) - np.log10(diam_bins[0:-1]))[0]
+        kappa_width = (kappa_bins[1:] - kappa_bins[0:-1])[0]
+        hist, xedges, yedges, cs = ax.hist2d(diams, kappa, bins=[diam_bins, kappa_bins], weights=numconc/(diam_logwidth*n_cells), 
+                                            density=False, cmin=1,edgecolor='face', linewidth=.1, zorder=10,
+                                            norm = mplcolors.LogNorm(1e7, 1e10))
+        ax.set_xscale('log')
+        #print(f"{np.nanmax(hist):3.2e}", f"{np.nanmin(hist):3.2e}")
+
+        if i in (1,3):
+            ax.set_yticklabels([])
+        else:
+            ax.set_ylabel('$\kappa$', fontsize=12)
+
+        if i in (0,1):
+            ax.set_xticklabels([])
+        else:
+            ax.set_xlabel('Particle diameter (m)', fontsize=12)
+        
+        _timeLabel(t_idx, ax)
+
+        ax.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,3), c='#414141', alpha=.5, zorder=0)
+        ax.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white', zorder=0)
+        ax.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,3), c='#414141', zorder=0)
+        ax.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141', zorder=0)
+        ax.tick_params(axis='both', labelsize=10, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+        ax.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
+    cbar = fig.colorbar(cs, ax=axs, orientation='vertical', #aspect=20, 
+                        fraction=0.03, pad=0.05)
+    cbar_title = 'Number conc. (m$^{-3}$)'
+    cbar.set_label(label=cbar_title, fontsize=12)
+    cbar.ax.tick_params(labelsize=11)
+    plt.savefig(f'2d-kappa-dist-4-panel-{scenario}-z{z_idx}.pdf', format='pdf', bbox_inches='tight')
+    #plt.close()
+
+def plotScenarios1DKappaDists(scenarios, xstart, xend, ystart, yend, z_idx, t_idx):
+    general_labels = {'uniform-basecase': 'Uniform base case', 
+                'point-source-1x1': 'Scenario 3'}
+    
+    # plot from kappa=(0,1) and diameters=(1e-8, 1e-6), weight by the number conc. of each computation particle. 
+    fig, axs = plt.subplots(1,2, figsize=(8, 4))
+
+
+    fig2, axs2 = plt.subplots(2,1, figsize=(6, 4))
+    plt.subplots_adjust(hspace=.25)
+
+    mode_colors = {'nucleation_mode': '', 'aitken_mode': '', 'accum_mode': ''}
+    viridis = plt.get_cmap('viridis')
+    for i, mode in zip(np.linspace(0.2, .8, len(mode_colors.keys())), mode_colors):
+
+        rgba = viridis(i)
+        hex_color = mplcolors.to_hex(rgba)
+        mode_colors[mode] = hex_color
+
+    for i, (ax, ax2, scenario) in enumerate(zip(axs.flatten(), axs2.flatten(), scenarios)):
+        GriddedOutput.loadData(scenario, xstart, xend, ystart, yend, z_idx, t_idx)
+
+        # 1-d arrays with per-particle attributes
+        kappa = GriddedOutput.gridded_data[scenario]['aero_kappa']
+        diams = GriddedOutput.gridded_data[scenario]['aero_diams']
+        numconc = GriddedOutput.gridded_data[scenario]['aero_numconc']
+        n_cells = GriddedOutput.gridded_data[scenario]['n_total_cells']
+
+        diam_bins = np.logspace(-8, -6, 50)
+        #diam_bins = GriddedOutput.bin_edges
+        kappa_bins = np.linspace(0, 1, 51)
+        diam_logwidth = (np.log10(diam_bins[1:]) - np.log10(diam_bins[0:-1]))[0]
+        kappa_width = (kappa_bins[1:] - kappa_bins[0:-1])[0]
+        hist, xedges, yedges, cs = ax.hist2d(diams, kappa, bins=[diam_bins, kappa_bins], weights=numconc/(diam_logwidth*n_cells), 
+                                            density=False, cmin=1,edgecolor='face', linewidth=.1, zorder=10)
+        plt.close(fig=fig)
+
+        kappa_bin_centers = 0.5*(kappa_bins[0:-1] + kappa_bins[1:])
+        diam_bin_centers = 0.5*(diam_bins[0:-1] + diam_bins[1:])
+
+        nucleation_mode = hist.copy()
+        nucleation_mode[diam_bin_centers>5e-8, :] = np.nan
+        aitken_mode = hist.copy()
+        aitken_mode[(diam_bin_centers<=5e-8)&(diam_bin_centers>1e-7)] = np.nan
+        accum_mode = hist.copy()
+        accum_mode[(diam_bin_centers<=1e-7), :] = np.nan
+
+        ax2.plot(kappa_bin_centers[:], np.nansum(nucleation_mode, axis=0), label='Nucleation', c=mode_colors['nucleation_mode'])
+        ax2.plot(kappa_bin_centers[:], np.nansum(aitken_mode, axis=0), label='Aitken', c=mode_colors['aitken_mode'])
+        ax2.plot(kappa_bin_centers[:], np.nansum(accum_mode, axis=0), label='Accum.', c=mode_colors['accum_mode'])
+        total_dist = np.nansum(nucleation_mode, axis=0) + np.nansum(aitken_mode, axis=0) + np.nansum(accum_mode, axis=0)
+        ax2.plot(kappa_bin_centers[:], total_dist, label='Total', c='k', ls=':')
+
+        ax2.set_title(f'{general_labels[scenario]}')
+
+        if i ==0:
+            ax2.set_xticklabels([])
+            fig2.legend(fontsize=11, ncol=4, loc='center', bbox_to_anchor=(.5,-.03))
+        else:
+            ax2.set_xlabel('$\kappa$', fontsize=13) 
+        ax2.set_ylabel('$dN/d\kappa$', fontsize=11)              
+        
+        ax2.set_ylim(0, ax2.get_ylim()[1])
+        ax2.set_xlim(0,1)
+
+        ax2.grid(which = "major", linewidth = 1, axis='y', ls="dotted", dashes=(.5,3), c='#414141', alpha=.5, zorder=0)
+        ax2.grid(which = "minor", linewidth = 1, axis='y', ls="dotted", dashes=(.5,6), c='white', zorder=0)
+        ax2.grid(which = "minor", linewidth = 1, axis='x', ls="dotted", dashes=(.5,3), c='#414141', zorder=0)
+        ax2.grid(which = "major", linewidth = 1, axis='x', ls="dotted", dashes=(.5,6), c='#414141', zorder=0)
+        ax2.tick_params(axis='both', labelsize=10, which='major', direction='in', top=True, right=True, bottom=True, left=True)
+        ax2.tick_params(axis='both', which='minor',direction='in',top=True, right=True, bottom=True, left=True)
+
+    plt.savefig(f'1d-kappa-dist-two-panel-z{z_idx}-t{t_idx}.pdf', format='pdf', bbox_inches='tight')
+    plt.close(fig=fig2)
