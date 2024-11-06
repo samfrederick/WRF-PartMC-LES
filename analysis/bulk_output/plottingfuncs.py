@@ -124,13 +124,14 @@ def plotScenariosVarsLevelConc(scenarios, variables, zlevel, mixingratio):
     plt.tight_layout()
 
 def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
-    #var_array = calculateVarZT(scenario, variable, mixingratio)
-    fig, axs  = plt.subplots(1,len(variables), figsize=(len(variables)*4,4.5))
 
+    fig_xsize = kwargs.get('fig_xsize', len(variables)*4)
+    fig_ysize = kwargs.get('fig_ysize', 4.5)
+    fig, axs  = plt.subplots(1,len(variables), figsize=(fig_xsize,fig_ysize))
+
+    global_fontsize = kwargs.get('fontsize', 12)
     for ax, variable in zip(axs, variables):
         for scenario in scenarios:
-            #times = np.arange(n_times)
-            var_array = np.zeros((n_times))
             if variable in aero_vars:
                 inverse_airdens = aerodata_dict[scenario]['aerodata']['ALT'][time, :, :, :]
                 array = 1e9*inverse_airdens*aerodata_dict[scenario]['aerodata'][variable][time, :, :, :]
@@ -146,14 +147,14 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
             ax.plot(array_mean, np.arange(100), label = scenario)
 
         #cbar = fig.colorbar(cs, label=f'{variable} {var_units}')
-        ax.legend()
-        ax.set_xlabel(f'{var_units}', fontsize=12)
-        ax.set_ylabel('z [km]', fontsize=12)
+        ax.legend(fontsize=global_fontsize)
+        ax.set_xlabel(f'{var_units}', fontsize=global_fontsize)
+        ax.set_ylabel('z [km]', fontsize=global_fontsize)
         ax.set_yticks(np.arange(0, n_levels+1, 25))
         ax.set_yticklabels(np.linspace(0, 2, 5).round(2))
-        ax.set_title(f'{variable}')
-    delta_t = kwargs.get('delta_t', 5)
-    plt.suptitle(f'Time: {delta_t*time} m')
+        ax.set_title(f'{variable}', fontsize=global_fontsize)
+    #delta_t = kwargs.get('delta_t', 5)
+    #plt.suptitle(f'Time: {delta_t*time} m')
     plt.tight_layout()
 
 def plotNSHPercentDiff(scenario, variable, vmin=None, vmax=None):
