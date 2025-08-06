@@ -467,7 +467,7 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
     if kwargs.get('use_standard_scenario_colors'):
         colors = Archive.getScenarioColors()
     else:
-        set1 = plt.get_cmap('Set1')
+        set1 = plt.get_cmap(kwargs.get('cmap', 'Set1'))
         num_colors = set1.N # number of colors in the set1 colormap
         colors = {}
         # Extract colors and convert to hex
@@ -476,7 +476,10 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
             hex_color = mplcolors.to_hex(rgba)  # Convert RGBA to hex
             colors[scenario] = hex_color
 
+    vars_to_quantile = kwargs.get('vars_to_quantile', {})
+
     for i, (ax, variable) in enumerate(zip(axs.flatten(), variables)):
+        write_quantile=True
         for scenario in scenarios:
             #times = np.arange(Archive.n_times)
             var_array = np.zeros((Archive.n_times))
@@ -509,13 +512,30 @@ def plotScenariosVarsVerticalProfile(scenarios, variables, time, **kwargs):
                     var_units = ''
                 variable_fmt = Archive.aerosol_fmt_map[variable]
             elif variable in Archive.gas_vars:
-                array = 1000*Archive.aero_data[scenario][variable][time, :, :, :] # convert ppmv to ppbv
-                var_units = 'Mixing Ratio (ppbv)'
+                if variable == 'oh':
+                    scaling_factor = 1e6 # scale to pptv
+                    var_units = 'Mixing Ratio (pptv)'
+                else:
+                    scaling_factor = 1e3
+                    var_units = 'Mixing Ratio (ppbv)'
+                array = scaling_factor*Archive.aero_data[scenario][variable][time, :, :, :] # convert ppmv to ppbv
+                
                 variable_fmt = Archive.gas_fmt_map[variable]
             elif variable in Archive.wrf_vars:
                 array = Archive.aero_data[scenario][variable][time, :, :, :]
                 var_units = ''
-            array_mean = array.mean(axis=(1,2))
+            else:
+                raise AttributeError(f'Variable {variable} not recognized')
+            
+            if variable in vars_to_quantile.keys():
+                quantile = vars_to_quantile[variable]
+                array_mean = np.quantile(array, quantile, axis=(1,2))
+                if write_quantile:
+                    ax.text(.5, .87, f'{quantile} quantile', transform=ax.transAxes, fontsize=global_fontsize, horizontalalignment='center', 
+                            bbox=dict(facecolor='white', edgecolor='black', alpha=.8))
+                    write_quantile = False
+            else:
+                array_mean = array.mean(axis=(1,2))
 
             if kwargs.get('general_scenario_label'):
                 label = labels[scenario]
