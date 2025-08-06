@@ -8,7 +8,8 @@ import matplotlib.colors as mplcolors
 class DataStruct:
     wrf_vars = ['T', 'P', 'ALT', 'PB', 'DNW', 'DN', 'Z', 'Z_AT_W', 'MAPFAC_M', 'MAPFAC_U', 'MAPFAC_V', 'MAPFAC_MX', 
             'MAPFAC_MY', 'MAPFAC_UX', 'MAPFAC_UY', 'MAPFAC_VX', 'MF_VX_INV', 'MAPFAC_VY','DENSITY_DRY_AIR', 
-            'TEMPERATURE', 'REL_HUMID',]
+            'TEMPERATURE', 'REL_HUMID', 'XLAT', 'XLONG', 'ZNU', 'ZNW', 'U', 'MU_U', 'V', 'MU_V', 'W', 'WW', 'RW']
+            
     aero_vars = ['TAUAER1', 'TAUAER2', 'TAUAER3', 'TAUAER4', 'GAER1', 'GAER2', 'GAER3', 'GAER4', 'WAER1', 'WAER2', 
                 'WAER3', 'WAER4', 'NUM_CONC_a01', 'NUM_CONC_a02', 'NUM_CONC_a03', 'NUM_CONC_a04', 'NUM_CONC_a05',
                 'NUM_CONC_a06', 'NUM_CONC_a07', 'NUM_CONC_a08', 'NUM_CONC_a09', 'NUM_CONC_a10', 'NUM_CONC_a11', 
@@ -141,6 +142,10 @@ class DataStruct:
         return scenario_sh, scaling_sh
     
     def _formatSpeciesSubscripts(self, var):
+        ion_charges = {'NH4': '+', 'NO3': '-', 'SO4': '2-'}
+        set_ion_charge = False
+        if var in ion_charges:
+            set_ion_charge = True
         l = list(var.upper())
         l_orig = l.copy()
         chars_modified = 0
@@ -159,6 +164,8 @@ class DataStruct:
             #print(l)
             chars_modified += 1
         formatted_var = ''.join(l)
+        if set_ion_charge:
+            formatted_var = formatted_var[:-1] + '^{' + ion_charges[var] + '}$'
         l = []
         return formatted_var
 
