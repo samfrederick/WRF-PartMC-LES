@@ -1,7 +1,7 @@
  &time_control
  run_days                            = 0,
  run_hours                           = 0,                                     
- run_minutes                         = 0,                                       
+ run_minutes                         = 0,                                                
  run_seconds                         = 0,
  start_year                          = 2023, 0001, 0001,
  start_month                         = 03,   01,   01,                          ! SF EDIT 2/7/24: change from summer solstace to vernal equinox
@@ -15,7 +15,7 @@
  end_hour                            = 15,   02,   00,                          ! SF EDIT 3/21/24: change 11 to 15
  end_minute                          = 00,   30,   00,                          
  end_second                          = 00,   00,   00,
- history_interval_m                  = 10,   10,   1,                           ! SF EDIT 3/21/24: set 10 mins
+ history_interval_m                  = 10,   10,   1,                           ! this controls how often to write to wrfout AND gridded output [if active] 
  history_interval_s                  = 00,   00,   1,
  frames_per_outfile                  = 1000, 1000, 1000,
  restart                             = .false.,
@@ -25,10 +25,10 @@
  io_form_input                       = 2,
  io_form_boundary                    = 2,
  io_form_auxhist2                    = 2,
- auxhist2_interval                   = 10,                                      ! SF EDIT 3/21/24: set 10 mins - write aerosol bulk state to netcdf (mins)
+ auxhist2_interval                   = 10,                                      !  write aerosol bulk state to netcdf (mins)
  auxhist2_outname                    = 'aerosols_d<domain>_<date>',
  io_form_auxhist3                    = 2,
- auxhist3_interval                   = 10,                                      ! SF EDIT 3/21/24: set 10 mins -  write aerosol distribution state to netcdf (mins)
+ auxhist3_interval                   = 10,                                      !  write aerosol distribution state to netcdf (mins)
  auxhist3_outname                    = 'aerosol_dist_d<domain>_<date>',
  !debug_level                         = 1000
  /
@@ -62,7 +62,7 @@
  ra_lw_physics                       = 0,     0,     0,
  ra_sw_physics                       = 0,     0,     0,
  radt                                = 0,     0,     0,
- sf_sfclay_physics                   = 0,     1,     1,
+ sf_sfclay_physics                   = 1,     1,     1,
  sf_surface_physics                  = 0,     0,     0,
  bl_pbl_physics                      = 0,     0,     0,
  bldt                                = 0,     0,     0,
@@ -161,21 +161,21 @@
  num_particles = 100.0,                                                         ! SF EDIT 3/1/24: set 100
  do_scm = .false., 
  do_coagulation = .true.                                                       
- do_emission = .true.,                                                         ! SF EDIT 3/28/24: set TRUE - turn this on for emissions
- do_mosaic = .true.,                                                           ! SF EDIT 3/28/24: set TRUE
+ do_emission = .true.,                                                          ! SF EDIT 3/28/24: set TRUE - turn this on for emissions
+ do_mosaic = .true.,                                                            ! SF EDIT 3/28/24: set TRUE
  do_deposition = .true.,                                                       
- do_gridded_output = .false.,                                                   ! SF EDIT 2/21/24: Set FALSE - generate netcdf files per column for per-particle data.
+ do_gridded_output = .false.,                                                    ! SF EDIT 4/30/24: Set TRUE - generate netcdf files per column for per-particle data.
  do_transport = .true.,
  record_removals = .false.,
  do_optical = .false.,
  random_seed = 0,
- partmc_prefix_out = "/data/nriemer/d/sf20/les_output/wrf-partmc/gridded-output"    ! output directory for per column aerosol data. output is controlled by do_gridded_output
+ partmc_prefix_out = "./gridded-output"                                         ! SF EDIT 4/30/34 (set relative to directory in which job is executed) - output path for per column aerosol data. output is controlled by do_gridded_output
  partmc_prefix_in = "./",
  partmc_specfile = "./scenario.spec",
  partmc_emissions = "./aero_emit_dists/aero_emit_dists",                        ! ./subdirectory/file-prefix
  !partmc_bcs = "./bcs/bcs",                                                     ! ./subdirectory/file-prefix
  partmc_ics = "./ics/ics",                                                      ! ./subdirectory/file-prefix
- partmc_chem_dt = 1.0,                                                          ! SF EDIT 3/28/24: change 60 to 1, chemistry timestep in seconds
+ partmc_chem_dt = 1.0,                                                          ! SF EDIT 4/30/34 , chemistry timestep in seconds
  num_bins = 100,
  num_edges = 101,
  do_ideal_init_cond = .false.                                                   ! turn off for loading in netcdf ics and emissions (maybe bcs)
