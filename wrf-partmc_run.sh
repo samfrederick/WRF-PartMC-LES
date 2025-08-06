@@ -10,6 +10,8 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=sf20@illinois.edu
 
+# CONFIGURABLE PARAMETERS -------------------------------------------------------------
+
 # Initial condition and emission profile parameters
 scenario='uniform-basecase'
 #scenario='fx2fy2'
@@ -42,6 +44,9 @@ cd $SIM_PATH
 #ARCHIVE_PATH=/data/nriemer/d/sf20/les_output/wrf-partmc
 ARCHIVE_PATH=/data/keeling/a/sf20/e/wrf-partmc-gridded-output  # SF 4/30/24: Add path for gridded output directory on E drive
 OUTPUT_PATH=$ARCHIVE_PATH/slurm-$SLURM_JOB_ID
+
+# END CONFIGURABLE PARAMETERS-------------------------------------------------------
+
 mkdir $OUTPUT_PATH
 mkdir $OUTPUT_PATH/aero_emit_dists
 mkdir $OUTPUT_PATH/ics
@@ -112,6 +117,15 @@ while IFS= read -r line; do
     line=$(echo "$line" | cut -d ',' -f 1) # only look at domain 1
     E_VERT=$(echo "$line" | sed 's/[^0-9]*//g') # remove non-integer values
   fi
+  if [[ $line == *"do_gridded_output "* ]]; then
+    line=$(echo "$line" | cut -d ',' -f 1) 
+    GRIDDED_OUTPUT=$(echo "$line" | cut -d '=' -f 2 | cut -d ' ' -f 2)
+    if [[ $GRIDDED_OUTPUT == ".true." ]]; then
+      GRIDDED_OUTPUT=1.0
+    else
+      GRIDDED_OUTPUT=0.0
+    fi
+  fi
 done < "$file_path"
 
 S_WE=$(expr $S_WE)
@@ -149,10 +163,12 @@ echo
 timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 echo "End : $timestamp"
 
-cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
-
 # move gridded output
-mv $ARCHIVE_PATH/gridded-output*.nc $OUTPUT_PATH
+if [ $GRIDDED_OUTPUT == 1.0 ]; then
+  echo "Moving gridded output files to $OUTPUT_PATH"
+  mv $ARCHIVE_PATH/gridded-output*.nc $OUTPUT_PATH
+fi
 
+cp $SIM_PATH/slurm-$SLURM_JOB_ID.out $OUTPUT_PATH/slurm-$SLURM_JOB_ID.out
 rm $SIM_PATH/slurm-$SLURM_JOB_ID.out
 
